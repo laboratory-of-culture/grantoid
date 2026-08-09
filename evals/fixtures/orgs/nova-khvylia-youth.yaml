@@ -1,0 +1,102 @@
+# SYNTHETIC profile. Describes no real organization.
+#
+# The mirror of porohy-culture. This organization has a confirmed international
+# partner, and it has explicitly confirmed it is not a publisher. That
+# confirmation — state EXPLICIT_NEGATIVE, not an absent key — is the only thing
+# that justifies NOT_ELIGIBLE on hoe-translation rather than a softer verdict.
+id: nova-khvylia-youth
+name: Молодіжний центр «Нова хвиля»
+synthetic: true
+
+legalForm: GROMADSKA_ORGANIZATSIYA
+oblast: Харківська
+city: Харків
+mission: >-
+  Підтримувати молодь Харківщини через неформальну освіту, психосоціальну
+  підтримку та можливості для участі в житті громади.
+
+facts:
+  legal_form:
+    state: SELF_REPORTED
+    valueText: Громадська організація
+
+  non_profit_status:
+    state: SELF_REPORTED
+    valueBoolean: true
+
+  registration_date:
+    state: SELF_REPORTED
+    valueText: "2017-09-25"
+
+  registration_oblast:
+    state: SELF_REPORTED
+    valueText: Харківська
+
+  activity_areas:
+    state: SELF_REPORTED
+    valueList:
+      - молодіжна робота
+      - неформальна освіта
+      - психосоціальна підтримка
+      - цифрові навички для молоді
+
+  sectors:
+    state: SELF_REPORTED
+    valueList:
+      - молодіжна робота
+      - освіта
+
+  geographic_coverage:
+    state: SELF_REPORTED
+    valueList:
+      - Харківська область
+      - прифронтові громади Харківщини
+
+  target_audiences:
+    state: SELF_REPORTED
+    valueList:
+      - молодь 14–25 років
+      - молодь із прифронтових громад
+      - молодіжні працівники
+
+  team_size:
+    state: SELF_REPORTED
+    valueNumber: 12
+
+  international_partners:
+    state: SELF_REPORTED
+    valueList:
+      - Fundacja Rozwoju Młodzieży, Польща — спільний проєкт Erasmus+ KA2, 2024–2025
+      - Youth Network Baltics, Литва — партнерство з 2023 року
+
+  international_project_experience:
+    state: SELF_REPORTED
+    valueBoolean: true
+
+  # The confirmed negative. This is what licenses NOT_ELIGIBLE on a
+  # publisher-only call — see docs/DECISIONS.md D4.
+  is_publisher:
+    state: EXPLICIT_NEGATIVE
+    valueBoolean: false
+    valueText: Організація не є видавництвом і не веде видавничої діяльності.
+
+  previous_grants:
+    state: SELF_REPORTED
+    valueList:
+      - UNICEF Ukraine, психосоціальна підтримка молоді, 2023, 45 000 EUR
+      - Erasmus+ KA2, партнерський проєкт, 2024, 28 000 EUR
+      - Міжнародний фонд «Відродження», 2022, 210 000 грн
+
+  previous_donors:
+    state: SELF_REPORTED
+    valueList:
+      - UNICEF Ukraine
+      - Erasmus+
+      - Міжнародний фонд «Відродження»
+
+  reporting_language_en:
+    state: SELF_REPORTED
+    valueBoolean: true
+
+# Deliberately absent, therefore UNKNOWN:
+#   annual_budget_eur, cofinancing_capacity, edrpou

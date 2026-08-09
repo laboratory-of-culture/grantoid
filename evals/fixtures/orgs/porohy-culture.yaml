@@ -1,0 +1,85 @@
+# SYNTHETIC profile. Describes no real organization.
+#
+# Only known facts are listed; the loader fills every remaining registry key with
+# state UNKNOWN. That is the point of the format — adding a key to FACT_REGISTRY
+# must not require editing every fixture, and an omitted key here means exactly
+# "nobody has asked", which is a real state and not a gap in the file.
+#
+# The load-bearing omission is `international_partners`. This organization has
+# never been asked, so the partner requirement on hoe-international-cooperation
+# has to resolve to UNCERTAIN — a grant it can still win by answering one
+# question — and not to a rejection.
+id: porohy-culture
+name: Культурна майстерня «Пороги»
+synthetic: true
+
+legalForm: GROMADSKA_ORGANIZATSIYA
+oblast: Житомирська
+city: Житомир
+mission: >-
+  Розвивати сучасну культурну сцену Житомирщини та залучати мешканців малих міст
+  до участі в культурному житті.
+
+facts:
+  legal_form:
+    state: SELF_REPORTED
+    valueText: Громадська організація
+
+  non_profit_status:
+    state: SELF_REPORTED
+    valueBoolean: true
+
+  registration_date:
+    state: SELF_REPORTED
+    valueText: "2019-04-11"
+
+  registration_oblast:
+    state: SELF_REPORTED
+    valueText: Житомирська
+
+  activity_areas:
+    state: SELF_REPORTED
+    valueList:
+      - сучасне мистецтво
+      - культурні події та фестивалі
+      - робота з локальними громадами
+      - освітні програми для митців
+
+  sectors:
+    state: SELF_REPORTED
+    valueList:
+      - культура
+      - креативні індустрії
+
+  geographic_coverage:
+    state: SELF_REPORTED
+    valueList:
+      - Житомирська область
+      - малі міста Житомирщини
+
+  target_audiences:
+    state: SELF_REPORTED
+    valueList:
+      - митці та культурні менеджери
+      - мешканці малих міст
+      - внутрішньо переміщені особи
+
+  team_size:
+    state: SELF_REPORTED
+    valueNumber: 6
+
+  previous_grants:
+    state: SELF_REPORTED
+    valueList:
+      - Український культурний фонд, 2023, 380 000 грн
+      - Житомирська міська рада, культурна програма, 2024, 120 000 грн
+
+  previous_donors:
+    state: SELF_REPORTED
+    valueList:
+      - Український культурний фонд
+      - Житомирська міська рада
+
+# Deliberately absent, therefore UNKNOWN:
+#   international_partners, international_project_experience, is_publisher,
+#   annual_budget_eur, cofinancing_capacity, reporting_language_en, edrpou

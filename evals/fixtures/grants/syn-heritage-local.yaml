@@ -1,0 +1,106 @@
+# SYNTHETIC. Describes no real funding programme. Exists so the golden set has a
+# clean positive for a culture organization, deliberately with no international
+# partner requirement so it is separable from hoe-international-cooperation.
+id: syn-heritage-local
+externalKey: synthetic/heritage-local
+title: Small community heritage
+titleUk: Мала культурна спадщина громад
+donorName: (синтетичний донор — тестова фікстура)
+sourceUrl: null
+retrievedAt: "2026-08-10"
+synthetic: true
+
+status: OPEN
+deadline: "2026-11-30"
+deadlineIsKnown: true
+
+funding:
+  min: 2000
+  max: 12000
+  currency: EUR
+  cofinancingRequired: false
+  maxSharePct: 100
+
+applicantTypes:
+  - громадська організація
+  - комунальний заклад культури
+applicantGeography:
+  - Україна
+sectors:
+  - культура
+  - культурна спадщина
+themes:
+  - локальна культурна спадщина
+targetGroups:
+  - мешканці малих міст і сіл
+applicationLanguage: українська
+
+eligibility:
+  - key: applicant-non-profit
+    kind: MANDATORY
+    orderIndex: 0
+    text: >-
+      The applicant must be a non-profit public organization or a municipal
+      cultural institution registered in Ukraine.
+    textUk: >-
+      Заявник має бути неприбутковою громадською організацією або комунальним
+      закладом культури, зареєстрованим в Україні.
+    resolvingFactKey: non_profit_status
+    citation:
+      quote: >-
+        Заявник має бути неприбутковою громадською організацією або комунальним
+        закладом культури.
+      document: synthetic fixture
+      retrievedAt: "2026-08-10"
+
+  - key: sector
+    kind: MANDATORY
+    orderIndex: 1
+    text: The organization must work in culture or cultural heritage.
+    textUk: Організація має працювати у сфері культури або культурної спадщини.
+    resolvingFactKey: sectors
+    citation:
+      quote: Організація має працювати у сфері культури або культурної спадщини.
+      document: synthetic fixture
+      retrievedAt: "2026-08-10"
+
+  - key: geography
+    kind: MANDATORY
+    orderIndex: 2
+    text: >-
+      The project must run in a settlement of up to 300,000 people or a rural
+      community.
+    textUk: >-
+      Проєкт має реалізовуватися в населеному пункті з населенням до 300 тисяч
+      осіб або в сільській громаді.
+    resolvingFactKey: geographic_coverage
+    citation:
+      quote: >-
+        Проєкт має реалізовуватися в населеному пункті з населенням до 300 тисяч
+        осіб або в сільській громаді.
+      document: synthetic fixture
+      retrievedAt: "2026-08-10"
+
+  - key: partnership-optional
+    kind: PREFERRED
+    orderIndex: 3
+    text: International partnership is welcome but not required.
+    textUk: Міжнародне партнерство вітається, але не є обов'язковим.
+    resolvingFactKey: international_partners
+    citation:
+      quote: Міжнародне партнерство вітається, але не є обов'язковим.
+      document: synthetic fixture
+      retrievedAt: "2026-08-10"
+
+requiredDocuments:
+  - опис проєкту
+  - бюджет
+  - статут організації
+
+evaluationCriteria:
+  - зв'язок проєкту з локальною спадщиною
+  - залучення мешканців громади
+  - реалістичність бюджету
+
+extractionConfidence: 1.0
+extractionNotes: Hand-authored fixture. Every field is stated; nothing is unread.

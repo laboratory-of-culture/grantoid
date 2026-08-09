@@ -9,10 +9,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  RECOMMEND_SCORE_FLOOR,
   assertVerdictPermitted,
   bucketOf,
   permittedVerdicts,
   rollUp,
+  shouldRecommend,
   type Assessed,
 } from "./ladder";
 
@@ -196,5 +198,46 @@ describe("bucketOf — the four buckets the breakdown renders", () => {
   it("groups both positive rungs together", () => {
     expect(bucketOf(criterion({ verdict: "MATCH" }))).toBe("MATCHED");
     expect(bucketOf(criterion({ verdict: "LIKELY_MATCH" }))).toBe("MATCHED");
+  });
+});
+
+describe("shouldRecommend — two independent gates", () => {
+  const good = [criterion({ verdict: "MATCH" })];
+  const uncertain = [
+    criterion({
+      verdict: "UNCERTAIN",
+      uncertaintyReason: "NO_PROFILE_DATA",
+      resolvingFactState: "UNKNOWN",
+    }),
+  ];
+  const blocked = [criterion({ verdict: "NOT_ELIGIBLE" })];
+
+  it("shows a good fit with an open question — that row is the point", () => {
+    expect(shouldRecommend(uncertain, 80)).toBe(true);
+  });
+
+  it("hides an established blocker however well it scores", () => {
+    expect(shouldRecommend(blocked, 95)).toBe(false);
+  });
+
+  it("hides a soft negative too", () => {
+    expect(shouldRecommend([criterion({ verdict: "LIKELY_NOT_ELIGIBLE" })], 95)).toBe(
+      false,
+    );
+  });
+
+  /**
+   * The porohy-culture x hoe-translation case from the golden set. A sparse
+   * profile makes every publisher rule UNCERTAIN, so the verdict gate alone
+   * would hand a culture NGO the entire translation corpus. The score gate is
+   * what stops it.
+   */
+  it("hides an irrelevant grant that is only uncertain because nothing is known", () => {
+    expect(shouldRecommend(uncertain, 15)).toBe(false);
+  });
+
+  it("treats the floor as inclusive", () => {
+    expect(shouldRecommend(good, RECOMMEND_SCORE_FLOOR)).toBe(true);
+    expect(shouldRecommend(good, RECOMMEND_SCORE_FLOOR - 1)).toBe(false);
   });
 });

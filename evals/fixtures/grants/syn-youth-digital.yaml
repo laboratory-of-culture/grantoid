@@ -1,0 +1,105 @@
+# SYNTHETIC. Describes no real funding programme. Exists so the golden set has a
+# clean positive for a youth organization and a hard geographic exclusion.
+id: syn-youth-digital
+externalKey: synthetic/youth-digital
+title: Digital skills for youth in frontline communities
+titleUk: Цифрові навички для молоді прифронтових громад
+donorName: (синтетичний донор — тестова фікстура)
+sourceUrl: null
+retrievedAt: "2026-08-10"
+synthetic: true
+
+status: OPEN
+deadline: "2026-10-15"
+deadlineIsKnown: true
+
+funding:
+  min: 5000
+  max: 25000
+  currency: EUR
+  cofinancingRequired: false
+  maxSharePct: 100
+
+applicantTypes:
+  - громадська організація
+  - благодійна організація
+applicantGeography:
+  - Україна
+sectors:
+  - освіта
+  - молодіжна робота
+themes:
+  - цифрові навички
+targetGroups:
+  - молодь 14–25 років
+applicationLanguage: українська
+
+eligibility:
+  - key: applicant-non-profit
+    kind: MANDATORY
+    orderIndex: 0
+    text: >-
+      The applicant must be a Ukrainian non-profit public or charitable
+      organization.
+    textUk: >-
+      Заявник має бути українською неприбутковою громадською або благодійною
+      організацією.
+    resolvingFactKey: non_profit_status
+    citation:
+      quote: >-
+        Заявник має бути українською неприбутковою громадською або благодійною
+        організацією.
+      document: synthetic fixture
+      retrievedAt: "2026-08-10"
+
+  - key: target-group
+    kind: MANDATORY
+    orderIndex: 1
+    text: The project must serve young people aged 14 to 25.
+    textUk: Проєкт має бути спрямований на молодь віком 14–25 років.
+    resolvingFactKey: target_audiences
+    citation:
+      quote: Проєкт має бути спрямований на молодь віком 14–25 років.
+      document: synthetic fixture
+      retrievedAt: "2026-08-10"
+
+  - key: geography
+    kind: MANDATORY
+    orderIndex: 2
+    text: >-
+      Activities must take place in communities of Kharkiv, Donetsk,
+      Zaporizhzhia, Sumy or Kherson oblast.
+    textUk: >-
+      Діяльність має відбуватися в громадах Харківської, Донецької,
+      Запорізької, Сумської або Херсонської області.
+    resolvingFactKey: geographic_coverage
+    citation:
+      quote: >-
+        Діяльність має відбуватися в громадах Харківської, Донецької,
+        Запорізької, Сумської або Херсонської області.
+      document: synthetic fixture
+      retrievedAt: "2026-08-10"
+
+  - key: prior-youth-experience
+    kind: PREFERRED
+    orderIndex: 3
+    text: At least one project with young people in the last three years.
+    textUk: Щонайменше один проєкт з молоддю за останні три роки.
+    resolvingFactKey: previous_grants
+    citation:
+      quote: Перевага надається організаціям із досвідом роботи з молоддю.
+      document: synthetic fixture
+      retrievedAt: "2026-08-10"
+
+requiredDocuments:
+  - опис проєкту
+  - бюджет
+  - статут організації
+
+evaluationCriteria:
+  - відповідність потребам цільової групи
+  - реалістичність бюджету
+  - сталість результатів
+
+extractionConfidence: 1.0
+extractionNotes: Hand-authored fixture. Every field is stated; nothing is unread.

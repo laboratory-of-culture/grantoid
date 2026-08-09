@@ -129,13 +129,35 @@ export function bucketOf(a: Assessed): Bucket {
 }
 
 /**
+ * Minimum fit score for a grant to reach the feed.
+ *
+ * A starting value, not a derived one. It exists because verdict alone is too
+ * permissive: an organization halfway through onboarding has UNCERTAIN on most
+ * criteria of most grants, and a verdict-only rule would hand it the entire
+ * corpus. Tune against the eval harness's feed precision — that is what the
+ * golden set is for.
+ */
+export const RECOMMEND_SCORE_FLOOR = 40;
+
+/**
  * Whether a grant belongs in the organization's feed.
  *
- * An open question is not a reason to hide a grant — it is a reason to show it
- * with the question attached. An established blocker is. The feed is judged on
- * precision, so this deliberately errs toward fewer, better rows.
+ * Two independent gates, because the two failure modes are different. An
+ * established blocker means the grant is not winnable — that is the verdict
+ * gate. A low fit score means it is winnable but irrelevant — that is the score
+ * gate, and it is what stops a sparse profile from flooding the feed with
+ * grants that are only "uncertain" because nothing is known yet.
+ *
+ * An open question on an otherwise good fit is not a reason to hide a grant. It
+ * is a reason to show it with the question attached — that row is the product's
+ * whole point.
  */
-export function shouldRecommend(assessments: readonly Assessed[]): boolean {
+export function shouldRecommend(
+  assessments: readonly Assessed[],
+  matchScore: number,
+  floor: number = RECOMMEND_SCORE_FLOOR,
+): boolean {
   const overall = rollUp(assessments);
-  return overall !== "NOT_ELIGIBLE" && overall !== "LIKELY_NOT_ELIGIBLE";
+  if (overall === "NOT_ELIGIBLE" || overall === "LIKELY_NOT_ELIGIBLE") return false;
+  return matchScore >= floor;
 }

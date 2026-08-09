@@ -1,0 +1,131 @@
+# REAL programme. Extracted 2026-08-10 from the House of Europe website.
+# Fields the page did not state are null rather than guessed — the gaps are part
+# of what this fixture tests.
+id: hoe-international-cooperation
+externalKey: /en/grant/international-cooperation-grants
+title: International Cooperation Grants
+titleUk: Гранти на міжнародну співпрацю
+donorName: House of Europe
+sourceUrl: https://houseofeurope.org.ua/en/grant/international-cooperation-grants
+retrievedAt: "2026-08-10"
+synthetic: false
+
+status: OPEN
+deadline: null
+deadlineIsKnown: false
+
+funding:
+  min: null
+  max: 50000
+  currency: EUR
+  cofinancingRequired: null
+  maxSharePct: null
+
+applicantTypes:
+  - public non-profit organisation
+applicantGeography:
+  - Україна
+  - Європа
+sectors:
+  - культура
+  - креативні індустрії
+themes:
+  - міжнародна співпраця
+targetGroups: []
+applicationLanguage: null
+
+# The call states applicant type and sector in one sentence. They are split into
+# two rules here because they are independently checkable against different
+# profile facts, and a single rule could not carry both resolvingFactKeys.
+eligibility:
+  - key: applicant-non-profit
+    kind: MANDATORY
+    orderIndex: 0
+    text: The applicant must be a public non-profit organisation.
+    textUk: Заявник має бути публічною неприбутковою організацією.
+    resolvingFactKey: non_profit_status
+    citation:
+      quote: >-
+        International Cooperation Grants support public non-profit organisations
+        in the sphere of culture and creative industries.
+      url: https://houseofeurope.org.ua/en/grant/international-cooperation-grants
+      retrievedAt: "2026-08-10"
+
+  - key: applicant-sector
+    kind: MANDATORY
+    orderIndex: 1
+    text: The applicant must work in the sphere of culture and creative industries.
+    textUk: Заявник має працювати у сфері культури та креативних індустрій.
+    resolvingFactKey: sectors
+    citation:
+      quote: >-
+        International Cooperation Grants support public non-profit organisations
+        in the sphere of culture and creative industries.
+      url: https://houseofeurope.org.ua/en/grant/international-cooperation-grants
+      retrievedAt: "2026-08-10"
+
+  - key: international-partner
+    kind: MANDATORY
+    orderIndex: 2
+    text: >-
+      The applicant must partner with at least one organisation from the opposite
+      region: a Ukrainian organisation partners with a European counterpart, or
+      vice versa.
+    textUk: >-
+      Заявник має мати щонайменше одного партнера з протилежного регіону:
+      українська організація — європейського, і навпаки.
+    resolvingFactKey: international_partners
+    citation:
+      quote: >-
+        Applicants must partner with at least one organization from the opposite
+        region.
+      url: https://houseofeurope.org.ua/en/grant/international-cooperation-grants
+      retrievedAt: "2026-08-10"
+
+  - key: excluded-costs
+    kind: EXCLUDED
+    orderIndex: 3
+    text: >-
+      Ongoing organisational costs, costs covered by other funding sources, and
+      equipment purchase or renovation are not covered.
+    textUk: >-
+      Не покриваються поточні витрати організації, витрати, покриті іншими
+      джерелами фінансування, а також закупівля обладнання та ремонт.
+    resolvingFactKey: null
+    citation:
+      quote: >-
+        Not covered: ongoing organizational costs; costs covered by other funding
+        sources; equipment purchase and renovation.
+      url: https://houseofeurope.org.ua/en/grant/international-cooperation-grants
+      retrievedAt: "2026-08-10"
+
+  - key: relevant-experience
+    kind: PREFERRED
+    orderIndex: 4
+    text: Relevant experience and a portfolio of previous projects are valued.
+    textUk: Цінується релевантний досвід та портфоліо реалізованих проєктів.
+    resolvingFactKey: previous_grants
+    citation:
+      quote: >-
+        The program prioritizes bright ideas first while valuing relevant
+        experience and a portfolio of projects.
+      url: https://houseofeurope.org.ua/en/grant/international-cooperation-grants
+      retrievedAt: "2026-08-10"
+
+requiredDocuments:
+  - application guidelines form
+  - budget form
+
+evaluationCriteria:
+  - originality of the idea
+  - relevance to the needs of Ukrainian society
+  - innovation under wartime circumstances
+  - relevant experience and project portfolio
+
+extractionConfidence: 0.7
+extractionNotes: >-
+  The public programme page states no deadline, no co-financing requirement, no
+  project duration limit and no application language. Those are likely in the
+  downloadable guidelines PDF, which this extraction did not read. Every null
+  here means unread, not absent. The applicant-type sentence was normalized into
+  two rules (applicant-non-profit, applicant-sector).

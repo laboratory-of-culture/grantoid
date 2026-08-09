@@ -1,0 +1,157 @@
+# Gold labels — hand-assigned, with the reasoning attached.
+#
+# Read the note before disputing a low eval score. Several of these are close
+# calls, and where a model lands one rung away the adjacent-agreement metric
+# says so separately from an outright miss.
+#
+# `criteria` is partial on purpose: only the rules that discriminate between
+# models are labelled here.
+
+pairs:
+  # ---------------------------------------------------------------- porohy ---
+
+  - org: porohy-culture
+    grant: hoe-international-cooperation
+    overall: UNCERTAIN
+    recommend: true
+    note: >-
+      The central case of the whole product. A Zhytomyr culture NGO is a public
+      non-profit in culture, so both applicant rules pass — but nobody has ever
+      asked it about international partners, so the partner requirement is
+      UNCERTAIN and not a rejection. This grant belongs in the feed with one
+      question attached; it is winnable the moment the organization answers.
+    criteria:
+      applicant-non-profit:
+        verdict: MATCH
+      applicant-sector:
+        verdict: MATCH
+      international-partner:
+        verdict: UNCERTAIN
+        uncertaintyReason: NO_PROFILE_DATA
+
+  - org: porohy-culture
+    grant: hoe-translation
+    overall: UNCERTAIN
+    recommend: false
+    note: >-
+      is_publisher has never been asked, so every publisher rule is UNCERTAIN
+      and the verdict cannot be a rejection. The grant still does not belong in
+      the feed — that is the score gate, not the verdict gate. A culture NGO
+      running exhibitions has no fit on the merits with a translation grant, so
+      matchScore lands well below the floor. This pair is why shouldRecommend
+      takes a score.
+    criteria:
+      applicant-is-publisher:
+        verdict: UNCERTAIN
+        uncertaintyReason: NO_PROFILE_DATA
+      applicant-geography:
+        verdict: MATCH
+      publishing-experience:
+        verdict: UNCERTAIN
+        uncertaintyReason: NO_PROFILE_DATA
+
+  - org: porohy-culture
+    grant: syn-youth-digital
+    overall: NOT_ELIGIBLE
+    recommend: false
+    note: >-
+      Zhytomyr oblast is not among the five eligible oblasts, and the
+      organization has stated its geography. That is a positive contradiction,
+      not a silence, so the geographic rule is an outright blocker and the
+      overall verdict is the floor it sets.
+    criteria:
+      applicant-non-profit:
+        verdict: MATCH
+      target-group:
+        verdict: LIKELY_NOT_ELIGIBLE
+      geography:
+        verdict: NOT_ELIGIBLE
+
+  - org: porohy-culture
+    grant: syn-heritage-local
+    overall: MATCH
+    recommend: true
+    note: >-
+      The clean positive. Non-profit, culture sector, works across small towns of
+      Zhytomyr oblast, and the call requires no international partner — so
+      nothing here depends on the fact the profile is missing.
+    criteria:
+      applicant-non-profit:
+        verdict: MATCH
+      sector:
+        verdict: MATCH
+      geography:
+        verdict: MATCH
+
+  # ----------------------------------------------------------- nova khvylia ---
+
+  - org: nova-khvylia-youth
+    grant: hoe-international-cooperation
+    overall: LIKELY_NOT_ELIGIBLE
+    recommend: false
+    note: >-
+      The inverse of the porohy pair, and the reason both are in the set. The
+      partner requirement passes outright here. What fails is sector: the
+      organization has stated its sectors as youth work and education, and the
+      call is for organisations in culture and creative industries. Stated
+      sectors that exclude culture is a strong signal but not a confirmed
+      negative — a youth organization can run a cultural project — so this is
+      LIKELY_NOT_ELIGIBLE rather than NOT_ELIGIBLE.
+    criteria:
+      applicant-non-profit:
+        verdict: MATCH
+      applicant-sector:
+        verdict: LIKELY_NOT_ELIGIBLE
+      international-partner:
+        verdict: MATCH
+
+  - org: nova-khvylia-youth
+    grant: hoe-translation
+    overall: NOT_ELIGIBLE
+    recommend: false
+    note: >-
+      The only outright rejection justified by a confirmed negative. The
+      organization has stated it is not a publisher and does no publishing, so
+      is_publisher is EXPLICIT_NEGATIVE — which is the single fact state that
+      licenses NOT_ELIGIBLE. Compare the same rule against porohy, where the
+      identical requirement can only reach UNCERTAIN.
+    criteria:
+      applicant-is-publisher:
+        verdict: NOT_ELIGIBLE
+      publishing-experience:
+        verdict: NOT_ELIGIBLE
+      applicant-geography:
+        verdict: MATCH
+
+  - org: nova-khvylia-youth
+    grant: syn-youth-digital
+    overall: MATCH
+    recommend: true
+    note: >-
+      The clean positive for the youth organization. Non-profit, works with
+      14–25 year olds, based in Kharkiv oblast which is explicitly listed.
+      Nothing uncertain on any gating rule.
+    criteria:
+      applicant-non-profit:
+        verdict: MATCH
+      target-group:
+        verdict: MATCH
+      geography:
+        verdict: MATCH
+
+  - org: nova-khvylia-youth
+    grant: syn-heritage-local
+    overall: NOT_ELIGIBLE
+    recommend: false
+    note: >-
+      Two independent failures, which is why this pair is useful: the sector is
+      wrong, and Kharkiv is far above the 300,000 population ceiling. A model
+      that reports only one of them still gets the overall verdict right, so the
+      criterion labels are what catch a shallow reading here.
+    criteria:
+      applicant-non-profit:
+        verdict: MATCH
+      sector:
+        verdict: LIKELY_NOT_ELIGIBLE
+      geography:
+        verdict: NOT_ELIGIBLE
