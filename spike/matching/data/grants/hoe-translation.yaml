@@ -1,0 +1,105 @@
+# REAL programme. Extracted 2026-08-10 from the House of Europe website.
+id: hoe-translation
+title: Translation Grants
+donor: House of Europe (EU-funded programme)
+source_url: https://houseofeurope.org.ua/en/grant/translation-grants
+retrieved_at: "2026-08-10"
+synthetic: false
+
+open: true
+deadline: null
+
+funding:
+  min: null
+  max: 5000
+  currency: EUR
+  cofinancing_required: true
+  max_share_pct: 70
+
+applicant_types:
+  - publisher
+  - publishing house
+applicant_geography:
+  - Ukraine
+  - EU
+  - United Kingdom
+sectors:
+  - publishing
+  - literature
+themes:
+  - literary translation
+target_groups: []
+
+eligibility:
+  - id: applicant-type
+    text: >-
+      The applicant must be a publisher-translator duo. The publishing house
+      applies together with the translator; authors may encourage their publisher
+      to apply but cannot apply themselves.
+    kind: mandatory
+    source:
+      url: https://houseofeurope.org.ua/en/grant/translation-grants
+      quote: Publisher-translator duos from Ukraine, EU, and UK.
+
+  - id: applicant-geography
+    text: The publisher must be based in Ukraine, the EU, or the United Kingdom.
+    kind: mandatory
+    source:
+      url: https://houseofeurope.org.ua/en/grant/translation-grants
+      quote: Publisher-translator duos from Ukraine, EU, and UK.
+
+  - id: eligible-work
+    text: >-
+      The work must be fiction (novels, poetry, drama) or non-fiction on culture,
+      creative industries, education, youth work, media, journalism, or social
+      entrepreneurship. Braille editions are supported.
+    kind: mandatory
+    source:
+      url: https://houseofeurope.org.ua/en/grant/translation-grants
+      quote: >-
+        Fiction (novels, poems, drama) and non-fiction (culture, creative
+        industries, education, youth work, media, journalism, social
+        entrepreneurship).
+
+  - id: language-pair
+    text: >-
+      The translation must run between Ukrainian and one of the 50+ eligible
+      languages — EU official languages and languages of Ukrainian minorities —
+      in either direction.
+    kind: mandatory
+    source:
+      url: https://houseofeurope.org.ua/en/grant/translation-grants
+      quote: >-
+        Translations can go from these languages into Ukrainian or vice versa.
+
+  - id: cofinancing
+    text: >-
+      The grant covers up to 70% of expenses; the applicant must cover the
+      remainder.
+    kind: mandatory
+    source:
+      url: https://houseofeurope.org.ua/en/grant/translation-grants
+      quote: Up to 70% of expenses.
+
+  - id: publishing-experience
+    text: Demonstrated publishing experience is required to deliver the project.
+    kind: mandatory
+    source:
+      url: https://houseofeurope.org.ua/en/grant/translation-grants
+      quote: Applicants must demonstrate sufficient experience to deliver the project.
+
+required_documents:
+  - application guidelines form
+  - budget form
+  - marketing plan form
+application_language: null
+
+evaluation_criteria:
+  - significance of the work selected
+  - demonstrated publishing experience
+
+extraction_confidence: 0.75
+extraction_notes: >-
+  Deadline and application language are not stated on the public page. The
+  endangered-languages sub-call, which covers full costs rather than 70%, is
+  noted on the page but not modelled here as a separate opportunity.

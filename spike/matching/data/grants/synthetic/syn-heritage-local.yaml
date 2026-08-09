@@ -1,0 +1,86 @@
+# SYNTHETIC grant. Describes no real funding programme. Exists so the eval set
+# contains a clean positive for a culture organization — deliberately with no
+# international-partner requirement, so it is separable from
+# hoe-international-cooperation.
+id: syn-heritage-local
+title: Мала культурна спадщина громад
+donor: (synthetic donor — test fixture)
+source_url: null
+retrieved_at: "2026-08-10"
+synthetic: true
+
+open: true
+deadline: "2026-11-30"
+
+funding:
+  min: 2000
+  max: 12000
+  currency: EUR
+  cofinancing_required: false
+  max_share_pct: 100
+
+applicant_types:
+  - громадська організація
+  - комунальний заклад культури
+applicant_geography:
+  - Україна
+sectors:
+  - культура
+  - культурна спадщина
+themes:
+  - локальна культурна спадщина
+  - залучення громади
+target_groups:
+  - мешканці малих міст і сіл
+
+eligibility:
+  - id: applicant-type
+    text: >-
+      Заявник має бути неприбутковою громадською організацією або комунальним
+      закладом культури, зареєстрованим в Україні.
+    kind: mandatory
+    source:
+      document: synthetic fixture
+      quote: >-
+        Заявник має бути неприбутковою громадською організацією або комунальним
+        закладом культури.
+
+  - id: sector
+    text: Організація має працювати у сфері культури або культурної спадщини.
+    kind: mandatory
+    source:
+      document: synthetic fixture
+      quote: Організація має працювати у сфері культури або культурної спадщини.
+
+  - id: geography
+    text: >-
+      Проєкт має реалізовуватися в населеному пункті з населенням до 250 тисяч
+      осіб або в сільській громаді.
+    kind: mandatory
+    source:
+      document: synthetic fixture
+      quote: >-
+        Проєкт має реалізовуватися в населеному пункті з населенням до 250 тисяч
+        осіб або в сільській громаді.
+
+  - id: no-partner-required
+    text: >-
+      Міжнародне партнерство не є обов'язковою умовою для цієї програми.
+    kind: preferred
+    source:
+      document: synthetic fixture
+      quote: Міжнародне партнерство вітається, але не є обов'язковим.
+
+required_documents:
+  - опис проєкту
+  - бюджет
+  - статут організації
+application_language: українська
+
+evaluation_criteria:
+  - зв'язок проєкту з локальною спадщиною
+  - залучення мешканців громади
+  - реалістичність бюджету
+
+extraction_confidence: 1.0
+extraction_notes: Hand-authored fixture; every field is stated, nothing is unread.

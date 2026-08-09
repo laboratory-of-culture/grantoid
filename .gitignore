@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Spike output — regenerate with `python -m spike.matching.run eval`
+spike/matching/results/*.json
+spike/matching/results/*.md
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

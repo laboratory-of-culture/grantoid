@@ -1,0 +1,52 @@
+# SYNTHETIC profile. Written to exercise the matcher; describes no real
+# organization. The load-bearing detail is `unknown_fields`: this org has never
+# been asked about international partners, so the partner requirement on
+# hoe-international-cooperation must resolve to UNCERTAIN, not to a rejection.
+id: porohy-culture
+name: Культурна майстерня «Пороги»
+synthetic: true
+
+legal_status: громадська організація
+non_profit: true
+registration_country: Україна
+registration_date: "2019-04-11"
+based_in: Житомир
+
+mission: >-
+  Розвивати сучасну культурну сцену Житомирщини та залучати мешканців малих міст
+  до участі в культурному житті.
+
+activity_areas:
+  - сучасне мистецтво
+  - культурні події та фестивалі
+  - робота з локальними громадами
+  - освітні програми для митців
+
+geographic_coverage:
+  - Житомирська область
+
+target_audiences:
+  - митці та культурні менеджери
+  - мешканці малих міст
+  - внутрішньо переміщені особи
+
+team_size: 6
+
+previous_grants:
+  - Український культурний фонд, 2023, 380 000 грн
+  - Житомирська міська рада, культурна програма, 2024, 120 000 грн
+
+previous_donors:
+  - Український культурний фонд
+  - Житомирська міська рада
+
+capabilities:
+  - організація публічних культурних подій
+  - управління проєктами з бюджетом до 500 000 грн
+  - звітність за грантами УКФ
+
+explicit_negatives: []
+
+unknown_fields:
+  - international_partners
+  - annual_budget_eur
