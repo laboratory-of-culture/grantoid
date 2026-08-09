@@ -15,7 +15,8 @@
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
-    "fixtures:check": "tsx evals/check-fixtures.ts"
+    "fixtures:check": "tsx evals/check-fixtures.ts",
+    "audit:tokens": "node scripts/audit-tokens.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",

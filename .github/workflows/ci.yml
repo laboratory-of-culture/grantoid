@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      # prisma validate reads the datasource url even though it never connects.
+      DATABASE_URL: postgresql://grant:grant@localhost:5432/grant_assistant?schema=public
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Prisma schema
+        run: npx prisma validate
+
+      # The ladder is the product's central claim. If these go red the platform
+      # is telling NGOs something it cannot support, so the run stops here.
+      - name: Eligibility ladder
+        run: npx vitest run packages/schemas/ladder.test.ts
+
+      - name: Unit tests
+        run: npx vitest run
+
+      # Catches a schema change nobody propagated to the golden set, and any
+      # coverage gap that would let the eval pass while testing nothing.
+      - name: Golden set
+        run: npx tsx evals/check-fixtures.ts
+
+      # A token system does not erode by decision. It erodes by one #fff under
+      # deadline, then another.
+      - name: Modernist tokens
+        run: node scripts/audit-tokens.mjs

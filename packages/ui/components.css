@@ -1,0 +1,381 @@
+/* Modernist component vocabulary.
+ *
+ * Compose these; do not reinvent them per screen. Every value here comes from a
+ * token — `npm run audit:tokens` fails the build on a literal hex, font name or
+ * raw px in this file.
+ *
+ * Two rules run through everything and are easy to undo by accident:
+ * nothing is centred, including labels inside wide buttons, and no corner is
+ * ever rounded.
+ */
+
+/* -------------------------------------------------------------- foundation */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  font-synthesis-weight: none;
+}
+
+:where(a) {
+  color: var(--color-accent-700);
+  text-underline-offset: 0.2em;
+}
+
+:where(:focus-visible) {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* ------------------------------------------------------------------- type */
+
+.display,
+.h1,
+.h2,
+.h3 {
+  margin: 0;
+  font-weight: var(--weight-black);
+  letter-spacing: var(--tracking-display);
+  line-height: var(--leading-tight);
+  text-wrap: balance;
+  text-align: left;
+}
+
+.display { font-size: var(--text-3xl); }
+.h1 { font-size: var(--text-2xl); }
+.h2 { font-size: var(--text-xl); }
+.h3 { font-size: var(--text-lg); font-weight: var(--weight-bold); }
+
+.prose {
+  max-width: var(--measure);
+  line-height: var(--leading-normal);
+}
+
+/* Structural labels. Uppercase and tracked out, in mono where the content is an
+ * identifier — a rule key, a source URL, a token count. The mono/sans contrast
+ * is this system's type personality, standing in for a second family. */
+.kicker {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.muted { color: var(--color-text-muted); }
+
+/* A donor clause or a profile line, quoted verbatim. Two of these facing each
+ * other is the evidence row — the one component the whole product argues from,
+ * so it is a first-class element and not a styled blockquote. */
+.quote {
+  margin: 0;
+  padding-left: var(--space-4);
+  border-left: var(--rule-weight) solid var(--color-neutral-400);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--color-neutral-800);
+}
+
+.quote-source {
+  display: block;
+  margin-top: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* ------------------------------------------------------------------ rules */
+
+.hr {
+  height: 0;
+  margin: 0;
+  border: 0;
+  border-top: var(--border);
+}
+
+.hr-quiet {
+  height: 0;
+  margin: 0;
+  border: 0;
+  border-top: var(--border-quiet);
+}
+
+/* ---------------------------------------------------------------- buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-normal);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  color: var(--color-neutral-500);
+  border-color: var(--color-neutral-400);
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+  color: var(--color-ground);
+}
+.btn-primary:hover:not(:disabled) { background: var(--color-accent-700); border-color: var(--color-accent-700); }
+.btn-primary:active:not(:disabled) { background: var(--color-accent-900); border-color: var(--color-accent-900); }
+
+.btn-secondary { background: var(--color-surface-raised); }
+.btn-secondary:hover:not(:disabled) { background: var(--color-neutral-200); }
+.btn-secondary:active:not(:disabled) { background: var(--color-neutral-300); }
+
+.btn-ghost { border-color: transparent; padding-inline: var(--space-2); }
+.btn-ghost:hover:not(:disabled) { background: var(--color-neutral-200); }
+
+.btn-icon { padding: var(--space-2); justify-content: center; }
+
+/* Full-bleed button. The label stays flush left even at full width — the one
+ * place a centred label creeps back in by habit. */
+.btn-block { display: flex; width: 100%; }
+
+/* ------------------------------------------------------------------- tags */
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tag-accent { background: var(--color-accent-100); color: var(--color-accent-800); }
+.tag-neutral { background: var(--color-neutral-200); color: var(--color-neutral-800); }
+.tag-outline { border: var(--rule-weight-quiet) solid var(--color-neutral-500); color: var(--color-neutral-700); }
+
+/* Match state. The label and the icon carry the meaning; the fill only
+ * separates "problem" from "everything else". Unknown is deliberately the
+ * quietest of the four — it is a question, not a warning. */
+.tag-state-matched { background: var(--color-state-matched-bg); color: var(--color-state-matched-fg); }
+.tag-state-problem { background: var(--color-state-problem-bg); color: var(--color-state-problem-fg); }
+.tag-state-blocked { background: var(--color-state-blocked-bg); color: var(--color-state-blocked-fg); }
+.tag-state-unknown { background: var(--color-state-unknown-bg); color: var(--color-state-unknown-fg); border: var(--rule-weight-quiet) solid var(--color-neutral-400); }
+
+/* ------------------------------------------------------------------ forms */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: left;
+}
+
+.field-label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.field-hint { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+/* Errors say what happened and how to fix it. They do not apologise, and they
+ * are never vague — see the writing guidance in the design brief. */
+.field-error {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-accent-700);
+}
+
+.input {
+  padding: var(--space-3);
+  border: var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--text-base);
+}
+
+.input::placeholder { color: var(--color-neutral-500); }
+.input[aria-invalid="true"] { border-color: var(--color-accent-600); }
+
+.radio { display: flex; align-items: flex-start; gap: var(--space-3); }
+.radio input { margin: 0; accent-color: var(--color-accent); }
+
+/* Segmented control. Cells are equal width, joined by shared rules. */
+.seg {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  border: var(--border);
+}
+
+.seg > button {
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-left: var(--border-quiet);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.seg > button:first-child { border-left: 0; }
+.seg > button[aria-pressed="true"] { background: var(--color-ink); color: var(--color-ground); }
+
+/* ------------------------------------------------------------------ cards */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+}
+
+.card-kicker { composes: kicker; }
+.card-title { margin: 0; font-size: var(--text-md); font-weight: var(--weight-bold); line-height: var(--leading-snug); }
+.card-body { margin: 0; font-size: var(--text-sm); color: var(--color-neutral-800); }
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.elev-sm { box-shadow: var(--elev-sm); }
+.elev-md { box-shadow: var(--elev-md); }
+.elev-lg { box-shadow: var(--elev-lg); }
+
+/* ------------------------------------------------------------------- grid */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--grid-gutter);
+}
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: repeat(6, 1fr); }
+}
+
+@media (max-width: 560px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* -------------------------------------------------------------------- nav */
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  border-right: var(--border);
+}
+
+.nav a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--border-quiet);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+}
+
+.nav a:hover { background: var(--color-neutral-200); }
+.nav a[aria-current="page"] { background: var(--color-ink); color: var(--color-ground); }
+
+/* ------------------------------------------------------------------ table */
+
+.table-wrap { overflow-x: auto; }
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.table th,
+.table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: var(--border-quiet);
+}
+
+.table th {
+  border-bottom: var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.table td.num { font-variant-numeric: tabular-nums; }
+
+/* ----------------------------------------------------------------- dialog */
+
+.dialog {
+  padding: 0;
+  border: var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  box-shadow: var(--elev-lg);
+}
+
+.dialog::backdrop { background: var(--color-neutral-900); opacity: 0.4; }
+
+/* ------------------------------------------------------------------ media */
+
+/* Photographs are grayscale, never tinted. */
+.grayscale { filter: grayscale(1); }

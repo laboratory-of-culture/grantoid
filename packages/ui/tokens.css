@@ -1,0 +1,175 @@
+/* Modernist — the only file in the codebase allowed to contain a literal colour,
+ * font name or raw pixel value. Everything else composes from these variables;
+ * `npm run audit:tokens` enforces that.
+ *
+ * The system is deliberately single-theme. The brief pins the ground to #f3f2f2
+ * and the ink to #201e1d, so there is no dark palette here — that is a choice,
+ * not an omission, and every colour is painted explicitly so the page never
+ * borrows a host background. If dark mode is wanted it needs a decision first,
+ * because inverting a mono system whose only accent carries semantic weight is
+ * not a token swap.
+ */
+
+/* ---------------------------------------------------------------- typeface --
+ * Archivo, self-hosted. Never a Google Fonts link: a CDN request fails silently
+ * under a strict CSP and falls back to a system face rather than erroring, so
+ * the page ships looking wrong with nothing in the console.
+ *
+ * Fetch step is in packages/ui/README.md. Until the file is present the stack
+ * degrades to a grotesque with Cyrillic coverage, not to a serif.
+ */
+@font-face {
+  font-family: "Archivo";
+  src: url("./fonts/archivo-variable.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* -- base ------------------------------------------------------------- */
+  --color-ground: #f3f2f2;
+  --color-ink: #201e1d;
+  --color-accent: #ec3013;
+
+  /* -- neutral ramp ------------------------------------------------------
+   * 100 is the ground, 900 is the ink. 100-300 are tinted fills and hovers,
+   * 500 is the base for borders and muted marks, 700-900 carry text.
+   * 600 is the lightest neutral that clears 4.5:1 on the ground — use it for
+   * secondary text and nothing lighter.
+   */
+  --color-neutral-100: #f3f2f2;
+  --color-neutral-200: #e6e4e3;
+  --color-neutral-300: #d2cfce;
+  --color-neutral-400: #b0acaa;
+  --color-neutral-500: #8a8583;
+  --color-neutral-600: #6a6563;
+  --color-neutral-700: #4c4746;
+  --color-neutral-800: #333030;
+  --color-neutral-900: #201e1d;
+
+  /* -- accent ramp -------------------------------------------------------
+   * 500 is the brand accent and clears 3:1 on the ground — enough for a rule,
+   * an icon or a large heading, not for running text. Paragraph-size accent
+   * text uses 700, which clears 4.5:1. That is the whole reason the ramp exists.
+   */
+  --color-accent-100: #fae2de;
+  --color-accent-200: #f7d0c9;
+  --color-accent-300: #f3b5ab;
+  --color-accent-400: #f26e5a;
+  --color-accent-500: #ec3013;
+  --color-accent-600: #d02a11;
+  --color-accent-700: #b1240e;
+  --color-accent-800: #8e1d0b;
+  --color-accent-900: #6a1609;
+
+  /* -- semantic roles ----------------------------------------------------
+   * Match state is carried by the tag label and the icon, never by a new hue.
+   * There is no green/amber/red ramp on purpose: a traffic light would say
+   * "unknown is bad", and the product's whole argument is that unknown is a
+   * question, not a rejection.
+   *
+   * Problems take the accent ramp. Unknowns take the neutral ramp — visually
+   * quieter than a problem, which is the honest encoding.
+   */
+  --color-state-matched-fg: var(--color-neutral-900);
+  --color-state-matched-bg: var(--color-neutral-200);
+  --color-state-problem-fg: var(--color-accent-800);
+  --color-state-problem-bg: var(--color-accent-100);
+  --color-state-blocked-fg: var(--color-ground);
+  --color-state-blocked-bg: var(--color-accent-700);
+  --color-state-unknown-fg: var(--color-neutral-700);
+  --color-state-unknown-bg: var(--color-neutral-100);
+
+  --color-surface: var(--color-ground);
+  --color-surface-raised: #ffffff;
+  --color-text: var(--color-neutral-900);
+  --color-text-muted: var(--color-neutral-600);
+  --color-rule: var(--color-neutral-900);
+  --color-rule-quiet: var(--color-neutral-300);
+
+  /* -- type --------------------------------------------------------------
+   * One family in every role. The personality comes from weight, width and
+   * tracking rather than from a second typeface — a display serif against a
+   * grotesque is the move this system deliberately does not make.
+   */
+  --font-sans: "Archivo", "Segoe UI", "Noto Sans", system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-md: 1.0625rem;
+  --text-lg: 1.375rem;
+  --text-xl: 1.875rem;
+  --text-2xl: 2.625rem;
+  --text-3xl: 3.75rem;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-black: 900;
+
+  --leading-tight: 1.05;
+  --leading-snug: 1.25;
+  --leading-normal: 1.5;
+
+  /* Display sizes tighten; labels open up. */
+  --tracking-display: -0.02em;
+  --tracking-normal: 0;
+  --tracking-label: 0.08em;
+
+  /* -- space -------------------------------------------------------------
+   * A 4px module. The grid is visible, so the rhythm has to be exact.
+   */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* -- structure ---------------------------------------------------------
+   * Zero radius everywhere, on purpose. The tokens exist so a component can
+   * reference a radius without anyone being tempted to invent one.
+   */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-full: 0px;
+
+  /* 2px dividers between major sections. Never a hairline, and never replaced
+   * by whitespace — the rule is the structure, not decoration on top of it. */
+  --rule-weight: 2px;
+  --rule-weight-quiet: 1px;
+  --border: var(--rule-weight) solid var(--color-rule);
+  --border-quiet: var(--rule-weight-quiet) solid var(--color-rule-quiet);
+
+  /* Elevation is a hard offset shadow, not a blur. A soft shadow would round
+   * the edges the whole system is built on keeping sharp. */
+  --elev-sm: 2px 2px 0 var(--color-neutral-300);
+  --elev-md: 4px 4px 0 var(--color-neutral-300);
+  --elev-lg: 8px 8px 0 var(--color-neutral-400);
+
+  --focus-ring: 2px solid var(--color-accent);
+  --focus-offset: 2px;
+
+  --grid-gutter: var(--space-5);
+  --measure: 68ch;
+
+  --duration-fast: 90ms;
+  --duration-base: 160ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+  }
+}
