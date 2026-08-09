@@ -1,0 +1,24 @@
+# Local Postgres with pgvector. The image ships the extension compiled in, so
+# `CREATE EXTENSION vector` in the first migration just works — installing
+# pgvector into a stock postgres image is the usual first hour lost here.
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: grant-assistant-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: grant
+      POSTGRES_PASSWORD: grant
+      POSTGRES_DB: grant_assistant
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U grant -d grant_assistant"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db-data:

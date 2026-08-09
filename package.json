@@ -1,0 +1,43 @@
+{
+  "name": "grant-assistant",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-powered grant intelligence and application platform for Ukrainian NGOs",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio",
+    "fixtures:check": "tsx evals/check-fixtures.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.1.0",
+    "lucide-react": "^0.469.0",
+    "next": "^15.1.3",
+    "ollama": "^0.5.11",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.24.1",
+    "zod-to-json-schema": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "prisma": "^6.1.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "yaml": "^2.6.1"
+  },
+  "engines": {
+    "node": ">=20.11"
+  }
+}

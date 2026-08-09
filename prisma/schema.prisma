@@ -1,0 +1,448 @@
+// The grant record (brief §10) and the organization profile (§6–§7), plus the
+// minimum around them to make both useful — sources, provenance, and the match
+// rows that consume them.
+//
+// Signed off 2026-08-10. Decisions behind it: docs/DECISIONS.md D2 and D4.
+//
+// The whole schema turns on one decision, in `OrganizationFact`: "we have not
+// asked this organization yet" is a *stored state*, not a NULL. A nullable
+// column cannot tell "no international partners" apart from "never asked about
+// international partners", and collapsing those two is precisely the failure
+// the product exists to prevent. Everything else follows from that.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// The confidence ladder. Ordered — the overall verdict is the floor of the
+/// mandatory criteria, never an average.
+enum Verdict {
+  MATCH
+  LIKELY_MATCH
+  UNCERTAIN
+  LIKELY_NOT_ELIGIBLE
+  NOT_ELIGIBLE
+}
+
+/// Why a criterion came out UNCERTAIN. This is what lets the UI split the
+/// "unknown" bucket from the "potential problem" bucket without adding a sixth
+/// verdict — see docs/proposals/milestone-1.md, open question 2.
+enum UncertaintyReason {
+  NO_PROFILE_DATA // the organization has not answered; action = complete profile
+  AMBIGUOUS_CALL // the donor text does not settle it; action = read guidelines
+  CONFLICTING_EVIDENCE // profile contradicts itself; action = human review
+}
+
+enum RuleKind {
+  MANDATORY // gates eligibility
+  PREFERRED // moves the score only
+  EXCLUDED // describes who or what is ruled out
+}
+
+/// The state of one profile field. UNKNOWN is the default for every key in the
+/// registry, so silence is always representable.
+enum FactState {
+  UNKNOWN // never asked, or asked and skipped
+  SELF_REPORTED // the org said it; not yet verified against a document
+  CONFIRMED // backed by a document citation and confirmed by a human
+  EXPLICIT_NEGATIVE // the org confirmed it does NOT have or do this
+}
+
+enum LegalForm {
+  GROMADSKA_ORGANIZATSIYA // ГО
+  BLAHODIYNA_ORGANIZATSIYA // БО
+  GROMADSKA_SPILKA
+  KOMUNALNYI_ZAKLAD
+  RELIHIYNA_ORGANIZATSIYA
+  INSHE
+}
+
+enum GrantStatus {
+  OPEN
+  CLOSED
+  UPCOMING
+  UNKNOWN
+}
+
+enum SourceKind {
+  DONOR
+  AGGREGATOR
+  PORTAL
+  NEWSLETTER
+}
+
+enum DocumentKind {
+  STATUT
+  REGISTRATION
+  ANNUAL_REPORT
+  PREVIOUS_APPLICATION
+  PROJECT_DESCRIPTION
+  STRATEGY
+  CALL_GUIDELINES
+  OTHER
+}
+
+// ---------------------------------------------------------------------------
+// Provenance
+// ---------------------------------------------------------------------------
+
+/// A verbatim quote and where it came from. `quote` is required: a citation
+/// that cannot show its words is not a citation.
+///
+/// Polymorphic via nullable parent FKs — Prisma has no native polymorphism, and
+/// a join table per parent buys nothing here.
+model Citation {
+  id          String   @id @default(cuid())
+  quote       String   @db.Text
+  url         String?
+  page        Int?
+  retrievedAt DateTime
+
+  documentId String?
+  document   Document? @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  grantFactId String?
+  grantFact   GrantFact? @relation(fields: [grantFactId], references: [id], onDelete: Cascade)
+
+  organizationFactId String?
+  organizationFact   OrganizationFact? @relation(fields: [organizationFactId], references: [id], onDelete: Cascade)
+
+  eligibilityRuleId String?
+  eligibilityRule   GrantEligibilityRule? @relation(fields: [eligibilityRuleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([documentId])
+  @@index([grantFactId])
+  @@index([organizationFactId])
+  @@index([eligibilityRuleId])
+}
+
+// ---------------------------------------------------------------------------
+// Sources and grants
+// ---------------------------------------------------------------------------
+
+/// A donor site or aggregator we ingest from. The robots/ToS fields are columns
+/// rather than notes because "did anyone check whether we're allowed to crawl
+/// this" is the question most likely to be skipped under delivery pressure.
+model Source {
+  id          String     @id @default(cuid())
+  name        String
+  homepageUrl String
+  kind        SourceKind
+  enabled     Boolean    @default(false)
+
+  robotsCheckedAt DateTime?
+  robotsAllows    Boolean?
+  tosReviewedAt   DateTime?
+  tosNote         String?   @db.Text
+  contactEmail    String?
+
+  crawlCadenceHours Int       @default(24)
+  rateLimitPerMin   Int       @default(10)
+  lastCrawledAt     DateTime?
+  lastError         String?   @db.Text
+
+  grants    Grant[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([homepageUrl])
+}
+
+/// A normalized funding opportunity.
+///
+/// Scalar columns exist for the fields the feed filters and sorts on. Anything
+/// the UI *asserts* to a user is also a `GrantFact` carrying a citation — the
+/// column is the index, the fact is the evidence.
+///
+/// NULL on `deadline`, `cofinancingRequired` or `maxSharePct` means UNREAD, not
+/// absent. `extractionNotes` records what was not read.
+model Grant {
+  id       String @id @default(cuid())
+  sourceId String
+  source   Source @relation(fields: [sourceId], references: [id])
+
+  /// Stable dedupe key within a source — usually the canonical URL path.
+  externalKey String
+
+  title          String
+  titleUk        String?
+  donorName      String
+  sourceUrl      String
+  applicationUrl String?
+
+  status          GrantStatus @default(UNKNOWN)
+  deadline        DateTime?
+  deadlineIsKnown Boolean     @default(false)
+
+  fundingMin          Decimal? @db.Decimal(14, 2)
+  fundingMax          Decimal? @db.Decimal(14, 2)
+  currency            String?
+  cofinancingRequired Boolean?
+  maxSharePct         Decimal? @db.Decimal(5, 2)
+
+  applicantTypes      String[]
+  applicantGeography  String[]
+  sectors             String[]
+  themes              String[]
+  targetGroups        String[]
+  applicationLanguage String?
+
+  extractionConfidence Float   @default(0)
+  extractionNotes      String? @db.Text
+
+  /// Hand-authored test record. Nothing treats it differently; the flag exists
+  /// so no reader mistakes a fixture for a live call.
+  synthetic Boolean @default(false)
+
+  contentHash   String
+  firstSeenAt   DateTime  @default(now())
+  retrievedAt   DateTime
+  lastCheckedAt DateTime
+  closedSeenAt  DateTime?
+
+  rules     GrantEligibilityRule[]
+  facts     GrantFact[]
+  chunks    GrantChunk[]
+  snapshots GrantSnapshot[]
+  matches   Match[]
+
+  @@unique([sourceId, externalKey])
+  @@index([status, deadline])
+  @@index([lastCheckedAt])
+}
+
+/// One requirement the applicant is judged against.
+model GrantEligibilityRule {
+  id      String @id @default(cuid())
+  grantId String
+  grant   Grant  @relation(fields: [grantId], references: [id], onDelete: Cascade)
+
+  /// Stable slug, e.g. "international-partner". Referenced by eval fixtures and
+  /// by criterion assessments, so it must survive re-extraction of the grant.
+  key        String
+  text       String   @db.Text
+  textUk     String?  @db.Text
+  kind       RuleKind
+  orderIndex Int      @default(0)
+
+  /// Which profile fact would settle this rule. Powers the "add international
+  /// partner to your profile" action on the match breakdown.
+  resolvingFactKey String?
+
+  citations   Citation[]
+  assessments CriterionAssessment[]
+
+  @@unique([grantId, key])
+}
+
+/// An asserted fact about a grant, with its evidence. Used for anything shown
+/// to a user as a claim about the call.
+model GrantFact {
+  id      String @id @default(cuid())
+  grantId String
+  grant   Grant  @relation(fields: [grantId], references: [id], onDelete: Cascade)
+
+  key        String
+  valueText  String? @db.Text
+  valueJson  Json?
+  confidence Float   @default(0)
+
+  citations Citation[]
+
+  @@unique([grantId, key])
+}
+
+/// Point-in-time capture used to detect moved deadlines, changed requirements
+/// and closed calls (brief §29).
+model GrantSnapshot {
+  id      String @id @default(cuid())
+  grantId String
+  grant   Grant  @relation(fields: [grantId], references: [id], onDelete: Cascade)
+
+  capturedAt    DateTime @default(now())
+  contentHash   String
+  changedFields String[]
+  rawExtract    Json
+
+  @@index([grantId, capturedAt])
+}
+
+model GrantChunk {
+  id        String                      @id @default(cuid())
+  grantId   String
+  grant     Grant                       @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  ordinal   Int
+  text      String                      @db.Text
+  embedding Unsupported("vector(1024)")?
+
+  @@unique([grantId, ordinal])
+}
+
+// ---------------------------------------------------------------------------
+// Organizations
+// ---------------------------------------------------------------------------
+
+model Organization {
+  id     String  @id @default(cuid())
+  name   String
+  nameEn String?
+
+  /// ЄДРПОУ — 8 digits. Unique when present; validated in the Zod schema.
+  edrpou String? @unique
+
+  legalForm       LegalForm?
+  nonProfitStatus Boolean?
+  registeredAt    DateTime?
+  oblast          String?
+  city            String?
+  websiteUrl      String?
+
+  /// Share of registry keys whose fact is not UNKNOWN. Drives onboarding.
+  profileCompleteness Float @default(0)
+
+  facts     OrganizationFact[]
+  documents Document[]
+  matches   Match[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// The state of one profile field for one organization.
+///
+/// A row exists for every key in the fact registry from the moment the
+/// organization is created, defaulting to UNKNOWN. That is what makes
+/// "we have not asked" queryable, and what lets the eligibility agent emit
+/// UNCERTAIN/NO_PROFILE_DATA instead of inferring from an absent row.
+///
+/// `confirmedAt` gates use: an unconfirmed fact may inform a match, but may not
+/// be written into an application (brief §6, human-in-the-loop skill).
+model OrganizationFact {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  /// From the fixed registry in packages/schemas — not free text.
+  key   String
+  state FactState @default(UNKNOWN)
+
+  valueText  String? @db.Text
+  valueJson  Json?
+  confidence Float?
+
+  citations Citation[]
+
+  confirmedByUserId String?
+  confirmedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, key])
+  @@index([organizationId, state])
+}
+
+model Document {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  kind       DocumentKind
+  filename   String
+  storageKey String
+  mimeType   String
+  sizeBytes  Int
+  pageCount  Int?
+
+  uploadedAt      DateTime  @default(now())
+  extractedAt     DateTime?
+  extractionError String?   @db.Text
+
+  citations Citation[]
+
+  @@index([organizationId, kind])
+}
+
+// ---------------------------------------------------------------------------
+// Matching
+// ---------------------------------------------------------------------------
+
+/// One assessment of one organization against one grant.
+///
+/// The uniqueness key includes the prompt fingerprint and both content hashes:
+/// a match is only reusable while the grant, the profile and the prompt are all
+/// unchanged. Anything else is a stale verdict pretending to be current.
+model Match {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  grantId        String
+  grant          Grant        @relation(fields: [grantId], references: [id], onDelete: Cascade)
+
+  overall    Verdict
+  /// Fit on the merits, ignoring hard blockers. Never rendered without the
+  /// criterion breakdown beside it.
+  matchScore Int
+  recommend  Boolean
+
+  summary       String   @db.Text
+  blockers      String[]
+  openQuestions String[]
+
+  modelTag           String
+  promptFingerprint  String
+  numCtx             Int?
+  seed               Int?
+  inputTokens        Int?
+  outputTokens       Int?
+  latencyMs          Int?
+  grantContentHash   String
+  profileVersionHash String
+
+  assessments CriterionAssessment[]
+  computedAt  DateTime              @default(now())
+
+  @@unique([organizationId, grantId, promptFingerprint, grantContentHash, profileVersionHash])
+  @@index([organizationId, recommend, overall])
+}
+
+/// The verdict on one rule, with both sides of the evidence.
+///
+/// `grantQuote` is required. `profileQuote` is null exactly when the profile
+/// does not settle the rule — in which case the verdict is UNCERTAIN and
+/// `uncertaintyReason` and `missingInformation` are populated. Enforced in the
+/// Zod schema and by a check constraint added in the migration.
+model CriterionAssessment {
+  id      String @id @default(cuid())
+  matchId String
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  ruleId  String
+  rule    GrantEligibilityRule @relation(fields: [ruleId], references: [id])
+
+  verdict           Verdict
+  uncertaintyReason UncertaintyReason?
+  rationale         String             @db.Text
+
+  grantQuote         String  @db.Text
+  profileQuote       String? @db.Text
+  missingInformation String? @db.Text
+
+  /// Copied from the rule at assessment time so the resolve action survives
+  /// re-extraction of the grant.
+  resolvingFactKey String?
+
+  @@index([matchId])
+}

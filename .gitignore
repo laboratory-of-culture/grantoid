@@ -1,16 +1,35 @@
-# Python
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-*.egg-info/
+# Node
+node_modules/
+.pnp
+.pnp.js
+npm-debug.log*
+yarn-error.log*
+
+# Next.js
+.next/
+out/
+build/
+next-env.d.ts
+
+# Prisma — generated client
+prisma/generated/
+
+# Testing
+coverage/
+.vitest/
 
 # Secrets
 .env
 .env.*
 !.env.example
 
-# Spike output — regenerate with `python -m spike.matching.run eval`
+# Python spike (superseded by DECISIONS.md D3; fixtures port to evals/)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Spike output — regenerate with the eval harness
 spike/matching/results/*.json
 spike/matching/results/*.md
 
@@ -19,3 +38,6 @@ spike/matching/results/*.md
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Build info
+*.tsbuildinfo
