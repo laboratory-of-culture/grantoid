@@ -16,6 +16,7 @@
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "fixtures:check": "tsx evals/check-fixtures.ts",
+    "eval": "tsx evals/run-eval.ts",
     "audit:tokens": "node scripts/audit-tokens.mjs"
   },
   "dependencies": {

@@ -29,9 +29,9 @@ __pycache__/
 .venv/
 venv/
 
-# Spike output — regenerate with the eval harness
-spike/matching/results/*.json
-spike/matching/results/*.md
+# Eval runs — regenerate with `npm run eval`. Headline numbers that matter as a
+# baseline go in docs/DECISIONS.md, not here.
+evals/results/
 
 # Editors / OS
 .idea/
