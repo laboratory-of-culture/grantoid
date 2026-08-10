@@ -44,7 +44,7 @@ const SOURCES = [
       "robots.txt забороняє лише /wp-admin/. Умови використання окремою сторінкою не опубліковані; " +
       "матеріали є публічними анонсами можливостей. Зберігаємо лише заголовок, посилання та дату, " +
       "повний текст не републікуємо.",
-    crawlCadenceHours: 6,
+    crawlCadenceHours: 24,
     rateLimitPerMin: 6,
   },
   {
@@ -57,7 +57,7 @@ const SOURCES = [
     tosNote:
       "robots.txt не обмежує обхід (порожній Disallow для всіх). RSS відсутній — розбираємо список " +
       "оголошень. Зберігаємо лише заголовок і посилання, повний текст не републікуємо.",
-    crawlCadenceHours: 6,
+    crawlCadenceHours: 24,
     rateLimitPerMin: 4,
   },
 ];

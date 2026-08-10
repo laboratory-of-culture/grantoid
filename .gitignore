@@ -27,6 +27,9 @@ coverage/
 # exists nowhere else — the database holds only its scrypt hash.
 admin-credentials.txt
 
+# Local test account, written by scripts/seed-demo-org.ts. Same reason.
+test-credentials.txt
+
 # Python spike (superseded by DECISIONS.md D3; fixtures port to evals/)
 __pycache__/
 *.py[cod]
