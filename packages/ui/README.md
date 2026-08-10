@@ -19,17 +19,25 @@ The typeface is self-hosted, never a Google Fonts link — a CDN request fails
 silently under a strict CSP and falls back to a system face rather than
 erroring, so the page ships looking wrong with nothing in the console.
 
-Download the variable font and place it at `packages/ui/fonts/archivo-variable.woff2`:
+Download the variable font and place it at `public/fonts/archivo-variable.woff2`:
 
 ```
 https://fonts.google.com/specimen/Archivo  →  Get font → download → extract the variable .ttf
 ```
 
 Convert the `.ttf` to `.woff2` (`fonttools`, `woff2_compress`, or any web
-converter). Until the file is present the stack degrades to Segoe UI / Noto Sans
-— a grotesque with Cyrillic coverage, not a serif — so the layout holds while
-the personality is missing. Archivo is SIL Open Font License 1.1; ship the
-licence alongside the font file.
+converter). Archivo is SIL Open Font License 1.1; ship the licence alongside the
+font file.
+
+**It goes in `public/`, not next to the stylesheet.** The `@font-face` rule uses
+an absolute `/fonts/…` URL that the browser resolves at runtime. A relative path
+would be resolved by webpack at build time instead, and an absent font would
+fail the build rather than degrade — which is exactly what happened the first
+time this was written, under a comment promising graceful degradation.
+
+With the absolute URL and no file present, the browser asks, does not get it, and
+falls back to Segoe UI / Noto Sans — a grotesque with Cyrillic coverage, not a
+serif. The layout holds while the personality is missing.
 
 ## The rules that are easy to undo by accident
 

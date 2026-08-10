@@ -1,44 +1,54 @@
 /**
- * Current organization context.
+ * Who is signed in, and which organization they are acting for.
  *
- * STUB. Authentication is not built yet, so this resolves the single seeded
- * organization. It exists as a function rather than a constant so that adding
- * auth is a change in one place — every caller already asks "who is this?"
- * instead of assuming.
- *
- * The tenancy layer (`packages/db/tenancy.ts`) is real and enforced regardless;
- * this only decides *which* organization the scoped client is bound to. That
- * ordering is deliberate — retrofitting isolation after documents exist is the
- * case where one forgotten filter goes unnoticed.
+ * The tenancy layer (`packages/db/tenancy.ts`) enforces isolation regardless of
+ * what this returns; this only decides *which* organization the scoped client is
+ * bound to. That ordering was deliberate — isolation went in before any
+ * organization data existed, so there was never a window where a forgotten
+ * filter could go unnoticed.
  */
 
-import { forOrganization, prisma, type ScopedClient } from "../../packages/db/tenancy";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+
+import { forOrganization, type ScopedClient } from "../../packages/db/tenancy";
+import { SESSION_COOKIE, resolveSession, type SessionUser } from "../../packages/auth/session";
+
+export async function currentUser(): Promise<SessionUser | null> {
+  const jar = await cookies();
+  return resolveSession(jar.get(SESSION_COOKIE)?.value);
+}
+
+export async function currentUserId(): Promise<string | null> {
+  return (await currentUser())?.userId ?? null;
+}
+
+/** The scoped client for the signed-in organization, or null when signed out. */
+export async function currentDb(): Promise<
+  { db: ScopedClient; organizationId: string; user: SessionUser } | null
+> {
+  const user = await currentUser();
+  if (!user) return null;
+  return {
+    db: forOrganization(user.organizationId),
+    organizationId: user.organizationId,
+    user,
+  };
+}
 
 /**
- * Who is acting. STUB — returns null until authentication exists.
+ * The same, but redirects instead of returning null.
  *
- * Null is written into the audit log as an unattributed action, which is
- * honest: right now nobody is identified. It is not a placeholder user id,
- * because a fabricated actor in an audit trail is worse than an absent one.
+ * Used by the app layout so every page under it can assume a session rather
+ * than each one remembering to check — a page that forgets is a page that
+ * renders someone else's data or crashes, and neither is acceptable.
  */
-export function currentUserId(): string | null {
-  return process.env.GRANT_AI_USER_ID ?? null;
-}
-
-export async function currentOrganizationId(): Promise<string | null> {
-  const fromEnv = process.env.GRANT_AI_ORG_ID;
-  if (fromEnv) return fromEnv;
-
-  const first = await prisma.organization.findFirst({
-    orderBy: { createdAt: "asc" },
-    select: { id: true },
-  });
-  return first?.id ?? null;
-}
-
-/** The scoped client for the current organization, or null if none is seeded. */
-export async function currentDb(): Promise<{ db: ScopedClient; organizationId: string } | null> {
-  const organizationId = await currentOrganizationId();
-  if (!organizationId) return null;
-  return { db: forOrganization(organizationId), organizationId };
+export async function requireDb(): Promise<{
+  db: ScopedClient;
+  organizationId: string;
+  user: SessionUser;
+}> {
+  const ctx = await currentDb();
+  if (!ctx) redirect("/vhid");
+  return ctx;
 }

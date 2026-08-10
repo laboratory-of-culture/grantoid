@@ -6,14 +6,14 @@ import {
   UploadRejected,
   deleteDocument,
   uploadDocument,
-} from "../../packages/db/documents";
+} from "../../../packages/db/documents";
 import {
   ConfirmationFailed,
   acceptCandidate,
   rejectCandidate,
-} from "../../packages/db/confirmation";
-import { ExtractionFailed, extractDocumentFacts } from "../../packages/db/extraction";
-import { currentDb, currentUserId } from "../lib/session";
+} from "../../../packages/db/confirmation";
+import { ExtractionFailed, extractDocumentFacts } from "../../../packages/db/extraction";
+import { currentDb } from "../../lib/session";
 
 export type ActionResult = { ok: true } | { ok: false; message: string };
 
@@ -82,7 +82,7 @@ export async function acceptCandidateAction(
   const corrected = typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : null;
 
   try {
-    await acceptCandidate(ctx.db, id, corrected, currentUserId());
+    await acceptCandidate(ctx.db, id, corrected, ctx.user.userId);
   } catch (err) {
     if (err instanceof ConfirmationFailed) return { ok: false, message: err.message };
     console.error("accept failed", err);
@@ -104,7 +104,7 @@ export async function rejectCandidateAction(
   if (!id) return { ok: false, message: "Не вказано пропозицію." };
 
   try {
-    await rejectCandidate(ctx.db, id, currentUserId());
+    await rejectCandidate(ctx.db, id, ctx.user.userId);
   } catch (err) {
     if (err instanceof ConfirmationFailed) return { ok: false, message: err.message };
     console.error("reject failed", err);

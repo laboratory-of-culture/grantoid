@@ -15,12 +15,18 @@
  * under a strict CSP and falls back to a system face rather than erroring, so
  * the page ships looking wrong with nothing in the console.
  *
- * Fetch step is in packages/ui/README.md. Until the file is present the stack
- * degrades to a grotesque with Cyrillic coverage, not to a serif.
+ * The URL is absolute, resolved from `public/` at runtime, rather than a
+ * relative path webpack resolves at build time. A relative one turns an absent
+ * font into a hard build failure — which is what the first version did, despite
+ * a comment right here claiming it would degrade gracefully. Absolute means the
+ * browser asks for it, does not get it, and falls back to the next family in
+ * the stack: a grotesque with Cyrillic coverage, never a serif.
+ *
+ * Fetch step is in packages/ui/README.md.
  */
 @font-face {
   font-family: "Archivo";
-  src: url("./fonts/archivo-variable.woff2") format("woff2-variations");
+  src: url("/fonts/archivo-variable.woff2") format("woff2-variations");
   font-weight: 100 900;
   font-stretch: 62% 125%;
   font-style: normal;

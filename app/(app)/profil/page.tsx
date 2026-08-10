@@ -4,10 +4,10 @@ import {
   FACT_REGISTRY,
   type FactGroup,
   type FactDefinition,
-} from "../../packages/schemas/fact-registry";
-import { LEGAL_FORM_LABEL_UK, type LegalForm } from "../../packages/schemas/organization";
-import { pendingCandidates } from "../../packages/db/confirmation";
-import { currentDb } from "../lib/session";
+} from "../../../packages/schemas/fact-registry";
+import { LEGAL_FORM_LABEL_UK, type LegalForm } from "../../../packages/schemas/organization";
+import { pendingCandidates } from "../../../packages/db/confirmation";
+import { currentDb } from "../../lib/session";
 import { Documents } from "./documents";
 import { ConfirmationQueue } from "./queue";
 

@@ -399,10 +399,25 @@ body {
   text-decoration: none;
 }
 
+.shell-head-end { margin-inline-start: auto; }
+
 .shell-body {
   display: grid;
   grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
   flex: 1;
+}
+
+/* Sign-in and registration. Left-aligned in a narrow column rather than a
+ * centred card — nothing in this system is centred, including here. */
+.auth-main {
+  padding: var(--space-8) var(--space-5);
+}
+
+.auth-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 26rem;
 }
 
 .shell-main {

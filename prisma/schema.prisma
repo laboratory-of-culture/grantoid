@@ -313,10 +313,11 @@ model Organization {
   /// Share of registry keys whose fact is not UNKNOWN. Drives onboarding.
   profileCompleteness Float @default(0)
 
-  facts      OrganizationFact[]
-  documents  Document[]
-  matches    Match[]
-  candidates FactCandidate[]
+  facts       OrganizationFact[]
+  documents   Document[]
+  matches     Match[]
+  candidates  FactCandidate[]
+  memberships Membership[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -354,6 +355,61 @@ model OrganizationFact {
 
   @@unique([organizationId, key])
   @@index([organizationId, state])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  /// scrypt, with the salt and parameters encoded in the string. Never a plain
+  /// hash — see packages/auth/password.ts.
+  passwordHash String
+  displayName  String?
+  createdAt    DateTime @default(now())
+  lastSeenAt   DateTime?
+
+  memberships Membership[]
+  sessions    Session[]
+}
+
+/// Which organizations a person belongs to.
+///
+/// A join table rather than a column on User because the brief's §37 already
+/// anticipates fundraising consultants working across several organizations,
+/// and retrofitting that after sessions carry a single organization id is the
+/// kind of change that leaks one tenant into another.
+model Membership {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role           MemberRole   @default(OWNER)
+  createdAt      DateTime     @default(now())
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
+enum MemberRole {
+  OWNER
+  MEMBER
+}
+
+/// A signed-in session.
+///
+/// The cookie carries a random token; only its hash is stored, so a dump of
+/// this table does not let anyone sign in as anybody.
+model Session {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 /// Append-only record of who decided what.
