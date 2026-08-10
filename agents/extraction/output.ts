@@ -83,14 +83,18 @@ export const ExtractedGrantShape = z.object({
 });
 export type ExtractedGrant = z.infer<typeof ExtractedGrantShape>;
 
+/**
+ * Deliberately *not* refined on the deadline's format.
+ *
+ * The first live run lost two complete grant records to
+ * `deadline must be YYYY-MM-DD` — the model wrote the date in a Ukrainian form,
+ * and a schema rejection threw away the donor, the sums, the sectors and every
+ * eligibility rule along with it. On a stage whose whole premise is that records
+ * arrive incomplete, one malformed field must degrade that field and nothing
+ * else. Normalisation and corroboration happen in `index.ts`, where a date that
+ * cannot be read becomes null and says so.
+ */
 export const ExtractedGrant = ExtractedGrantShape.superRefine((g, ctx) => {
-  if (g.deadline !== null && !/^\d{4}-\d{2}-\d{2}$/.test(g.deadline)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["deadline"],
-      message: "deadline must be YYYY-MM-DD or null",
-    });
-  }
   if (g.fundingMin !== null && g.fundingMax !== null && g.fundingMin > g.fundingMax) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,

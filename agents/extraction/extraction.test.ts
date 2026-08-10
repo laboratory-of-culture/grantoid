@@ -11,6 +11,7 @@ import {
   dateOccursIn,
   extractionConfidence,
   missingFields,
+  normalizeDate,
   quoteOccursIn,
 } from "./index";
 import type { ExtractedGrant } from "./output";
@@ -107,6 +108,32 @@ describe("extractionConfidence", () => {
     expect(extractionConfidence(partial, false)).toBeLessThan(
       extractionConfidence(FULL, false),
     );
+  });
+});
+
+describe("normalizeDate", () => {
+  // Two complete live grants were lost to a schema rejection over this before
+  // the format was coerced instead of enforced.
+  it("passes an ISO date through", () => {
+    expect(normalizeDate("2026-09-15")).toBe("2026-09-15");
+  });
+
+  it("reads the forms Ukrainian announcements actually use", () => {
+    expect(normalizeDate("15.09.2026")).toBe("2026-09-15");
+    expect(normalizeDate("5.9.2026")).toBe("2026-09-05");
+    expect(normalizeDate("15 вересня 2026")).toBe("2026-09-15");
+  });
+
+  it("returns null for a date with no year rather than assuming one", () => {
+    // Assuming the current year turns a call that closed last March into one
+    // closing next March.
+    expect(normalizeDate("15 вересня")).toBeNull();
+    expect(normalizeDate("вересень 2026")).toBeNull();
+  });
+
+  it("returns null for nothing", () => {
+    expect(normalizeDate(null)).toBeNull();
+    expect(normalizeDate("  ")).toBeNull();
   });
 });
 

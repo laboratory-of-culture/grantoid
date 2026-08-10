@@ -29,6 +29,14 @@ export type MatchOutcome = {
   recommended: number;
   durationMs: number;
   errors: { grantId: string; title: string; error: string }[];
+  /**
+   * Every deterministic exclusion, with its reason.
+   *
+   * Kept rather than counted because a filter that silently drops grants is the
+   * one failure mode this module cannot detect from the outside: an
+   * over-eager rule and a genuinely irrelevant corpus produce the same number.
+   */
+  excluded: { grantId: string; title: string; rule: string; reasonUk: string }[];
 };
 
 /**
@@ -98,6 +106,7 @@ export async function matchOrganization(
     recommended: 0,
     durationMs: 0,
     errors: [],
+    excluded: [],
   };
 
   for (const grantRow of grantRows) {
@@ -114,6 +123,12 @@ export async function matchOrganization(
     const gate = prefilter(filterable, filterableGrant, now);
     if (!gate.pass) {
       outcome.filtered += 1;
+      outcome.excluded.push({
+        grantId: grantRow.id,
+        title: grantRow.titleUk ?? grantRow.title,
+        rule: gate.rule,
+        reasonUk: gate.reasonUk,
+      });
       continue;
     }
 

@@ -121,6 +121,41 @@ const MONTHS_UK = [
 ];
 
 /**
+ * Coerce whatever date form the model produced into `YYYY-MM-DD`, or null.
+ *
+ * Asking for ISO in the prompt gets ISO most of the time; the rest of the time
+ * it gets "15 вересня 2026" or "15.09.2026", and the first live run threw away
+ * two otherwise complete grants over exactly that. Reading the forms Ukrainian
+ * announcements actually use is cheaper than losing the record.
+ *
+ * A date with no year is null rather than assumed. Assuming the current year is
+ * how a call that closed last March becomes one that closes next March.
+ */
+export function normalizeDate(raw: string | null): string | null {
+  if (raw === null) return null;
+  const text = raw.trim().toLowerCase();
+  if (text.length === 0) return null;
+
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+  const numeric = /^(\d{1,2})[./](\d{1,2})[./](\d{4})/.exec(text);
+  if (numeric) {
+    const [, d, m, y] = numeric as unknown as [string, string, string, string];
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+
+  const named = new RegExp(`^(\\d{1,2})\\s+(${MONTHS_UK.join("|")})\\s+(\\d{4})`).exec(text);
+  if (named) {
+    const [, d, month, y] = named as unknown as [string, string, string, string];
+    const m = String(MONTHS_UK.indexOf(month) + 1).padStart(2, "0");
+    return `${y}-${m}-${d.padStart(2, "0")}`;
+  }
+
+  return null;
+}
+
+/**
  * Does the page actually contain this date?
  *
  * A date is the one field where a wrong answer is worse than none: an
@@ -256,7 +291,10 @@ export async function extractGrant(
   // A date or a sum that is not on the page is discarded rather than stored.
   // Both are acted on directly by an organization, and being wrong about them
   // costs more than admitting they were not found.
-  let deadline = grant.deadline;
+  let deadline = normalizeDate(grant.deadline);
+  if (grant.deadline !== null && deadline === null) {
+    corrections.push(`дату «${grant.deadline}» не вдалося розпізнати`);
+  }
   if (deadline !== null && !dateOccursIn(deadline, article)) {
     corrections.push(`дату ${deadline} відкинуто — її немає в тексті оголошення`);
     deadline = null;

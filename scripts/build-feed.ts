@@ -43,9 +43,19 @@ async function main(): Promise<void> {
     );
   }
 
+  // Printed in full, because "filtered 6" and "the corpus is irrelevant" look
+  // identical from a count and mean opposite things about the filter.
+  if (outcome.excluded.length > 0) {
+    console.log(`\nвідсіяно без виклику моделі:`);
+    for (const ex of outcome.excluded) {
+      console.log(`  − ${ex.title.slice(0, 58)}`);
+      console.log(`    [${ex.rule}] ${ex.reasonUk.slice(0, 100)}`);
+    }
+  }
+
   for (const err of outcome.errors) {
     console.log(`\n  ! ${err.title.slice(0, 60)}`);
-    console.log(`    ${err.error.slice(0, 200)}`);
+    console.log(`    ${err.error}`);
   }
 
   const feed = await loadFeed(organizationId);

@@ -113,8 +113,42 @@ describe("prefilter — refuses to exclude on silence", () => {
     expect(prefilter(LAB, grant({ applicantGeography: ["Ukraine"] }), NOW).pass).toBe(true);
   });
 
+  it("treats a worldwide call as open, not as a foreign restriction", () => {
+    // Both of these were excluded on the first live run. "Global" is the
+    // absence of a geographic limit, not one.
+    expect(prefilter(LAB, grant({ applicantGeography: ["Global"] }), NOW).pass).toBe(true);
+    expect(prefilter(LAB, grant({ applicantGeography: ["Worldwide"] }), NOW).pass).toBe(true);
+  });
+
+  it("does not treat a sentence about eligibility as a list of regions", () => {
+    // Live value: a description of which countries qualify, which matches no
+    // place name and therefore rejected everyone.
+    const described = grant({
+      applicantGeography: [
+        "Країни, що мають офіційний мирний процес (Track 1 або 2) чи впровадження мирної угоди",
+      ],
+    });
+    expect(prefilter(LAB, described, NOW).pass).toBe(true);
+  });
+
   it("passes a call that names no sectors — it is open to all of them", () => {
     expect(prefilter(LAB, grant({ sectors: [] }), NOW).pass).toBe(true);
+  });
+
+  it("does not compare sectors across alphabets", () => {
+    // Live case: the call's sector was "Active Play" and the profile's are
+    // Ukrainian. They share no stem regardless of how related they are, so the
+    // exclusion would be an artefact of language. The model reads both.
+    expect(prefilter(LAB, grant({ sectors: ["Active Play"] }), NOW).pass).toBe(true);
+    expect(prefilter(LAB, grant({ sectors: ["agriculture", "mining"] }), NOW).pass).toBe(true);
+  });
+
+  it("does not treat an applicant description as a sector label", () => {
+    // Extraction filed this under sectors on the live corpus.
+    const misfiled = grant({
+      sectors: ["Місцеві жіночі правозахисні організації, що працюють у громадах"],
+    });
+    expect(prefilter(LAB, misfiled, NOW).pass).toBe(true);
   });
 
   it("passes a call whose deadline could not be read", () => {

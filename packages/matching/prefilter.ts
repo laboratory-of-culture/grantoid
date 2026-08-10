@@ -114,7 +114,27 @@ const GEO_NOISE: ReadonlySet<string> = new Set([
  * nationwide call, which is the most expensive mistake this module can make.
  */
 const NATIONWIDE =
-  /(україн|ukrain|усі\s+област|вся\s+країн|по\s+всій\s+терит|nationwide|all\s+regions)/iu;
+  /(україн|ukrain|усі\s+област|вся\s+країн|по\s+всій\s+терит|nationwide|all\s+regions|global|worldwide|міжнародн|international|будь-як)/iu;
+
+/**
+ * Longest a value can be and still be a place name.
+ *
+ * The first live run excluded a call whose stated geography was "Країни, що
+ * мають офіційний мирний процес (Track 1 або 2)…" — a description of
+ * eligibility, not a list of regions. Compared as a place name it matches
+ * nothing and rejects everyone, which is the most expensive mistake this module
+ * can make.
+ */
+const MAX_PLACE_NAME = 40;
+
+function looksLikePlaceList(values: readonly string[]): boolean {
+  return values.length > 0 && values.every((v) => v.trim().length <= MAX_PLACE_NAME);
+}
+
+/** The same guard for sector labels, which extraction fills just as loosely. */
+function looksLikeLabelList(values: readonly string[]): boolean {
+  return values.length > 0 && values.every((v) => v.trim().length <= MAX_PLACE_NAME);
+}
 
 export type FilterableOrganization = {
   /** Null when the profile fact is UNKNOWN — not an empty list. */
@@ -167,6 +187,9 @@ export function geographyExcludes(
 ): boolean {
   if (grant.applicantGeography.length === 0) return false;
   if (grant.applicantGeography.some((g) => NATIONWIDE.test(g))) return false;
+  // A sentence describing who qualifies is not a region list, and comparing it
+  // as one rejects everybody.
+  if (!looksLikePlaceList(grant.applicantGeography)) return false;
 
   const orgPlaces = [
     ...(org.geography ?? []),
@@ -192,7 +215,29 @@ export function geographyExcludes(
 export function sectorExcludes(org: FilterableOrganization, grant: FilterableGrant): boolean {
   if (grant.sectors.length === 0) return false;
   if (org.sectors === null || org.sectors.length === 0) return false;
+
+  // Extraction sometimes files an applicant description under sectors — the
+  // live corpus produced "Місцеві жіночі правозахисні організації" as a sector.
+  // Compared as a label it matches nothing and excludes everyone.
+  if (!looksLikeLabelList(grant.sectors)) return false;
+
+  // Comparing across scripts is comparing nothing: "Active Play" shares no stem
+  // with "культура" no matter how related they are, and the exclusion that
+  // follows is an artefact of language, not of fit. Both live over-exclusions
+  // found on the first feed run were this. The model reads both languages, so
+  // the pair goes to it.
+  if (!sameScript(org.sectors, grant.sectors)) return false;
+
   return !overlaps(org.sectors, grant.sectors);
+}
+
+const CYRILLIC = /\p{Script=Cyrillic}/u;
+
+/** Whether two label lists are written in the same alphabet at all. */
+export function sameScript(a: readonly string[], b: readonly string[]): boolean {
+  const aCyrillic = a.some((v) => CYRILLIC.test(v));
+  const bCyrillic = b.some((v) => CYRILLIC.test(v));
+  return aCyrillic === bCyrillic;
 }
 
 /**

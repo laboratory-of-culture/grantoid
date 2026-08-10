@@ -151,6 +151,30 @@ export type EligibilityRun = {
  * Corrections are recorded rather than applied silently. A model that needs
  * correcting often is one to replace, and that is only visible if the count is.
  */
+/**
+ * Strip fields that only mean something on an UNCERTAIN verdict.
+ *
+ * `uncertaintyReason` is a discriminator on UNCERTAIN, not a property of every
+ * criterion, and the model does emit `MATCH` alongside `NO_PROFILE_DATA` — the
+ * first live feed lost two matches to the database check that catches exactly
+ * that pair. The constraint is right and stays; this is the layer that should
+ * have made it unreachable.
+ *
+ * Normalised rather than rejected. The verdict is what an organization acts on,
+ * and discarding a whole assessment over a discriminator that should have been
+ * null repeats the mistake extraction made with a malformed date. Verdicts are
+ * never touched here — those changes go through the corrections list, where they
+ * are counted.
+ */
+function coherent(c: MatchResult["criteria"][number]): MatchResult["criteria"][number] {
+  if (c.verdict === "UNCERTAIN") return c;
+  if (c.uncertaintyReason === null && c.missingInformation === null) return c;
+  // "Немає" is what a model writes into a field it has nothing to put in; it
+  // would render as «бракує: Немає» beside a criterion that is not missing
+  // anything.
+  return { ...c, uncertaintyReason: null, missingInformation: null };
+}
+
 function applyEvidenceConstraints(
   result: MatchResult,
   org: OrganizationProfile,
@@ -160,7 +184,8 @@ function applyEvidenceConstraints(
   const factByKey = new Map(org.facts.map((f) => [f.key, f]));
   const corrections: Correction[] = [];
 
-  const criteria = result.criteria.map((c) => {
+  const criteria = result.criteria.map((raw) => {
+    const c = coherent(raw);
     const rule = ruleByKey.get(c.ruleKey);
     const factKey = rule?.resolvingFactKey ?? null;
     // No single fact resolves this rule — it is judged from the profile as a
@@ -193,7 +218,11 @@ function applyEvidenceConstraints(
     };
   });
 
-  if (corrections.length === 0) return { result, corrections };
+  // `criteria`, not `result.criteria` — the early return used to hand back the
+  // model's original output, which threw away the coherence pass above in
+  // exactly the case that needed it: a result with no verdict corrections at
+  // all, carrying a stray reason on a MATCH.
+  if (corrections.length === 0) return { result: { ...result, criteria }, corrections };
 
   // The overall verdict is derived, so it has to be recomputed from the
   // corrected criteria rather than left as the model wrote it.
