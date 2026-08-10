@@ -9,8 +9,25 @@ jobs:
   check:
     runs-on: ubuntu-latest
     env:
-      # prisma validate reads the datasource url even though it never connects.
       DATABASE_URL: postgresql://grant:grant@localhost:5432/grant_assistant?schema=public
+
+    # The isolation tests skip themselves when no database is reachable, which
+    # would mean tenancy is never actually verified in CI — the one place it
+    # most needs to be. pgvector ships the extension compiled in.
+    services:
+      db:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: grant
+          POSTGRES_PASSWORD: grant
+          POSTGRES_DB: grant_assistant
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U grant -d grant_assistant"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +44,9 @@ jobs:
 
       - name: Prisma schema
         run: npx prisma validate
+
+      - name: Migrate
+        run: npx prisma migrate deploy
 
       # The ladder is the product's central claim. If these go red the platform
       # is telling NGOs something it cannot support, so the run stops here.

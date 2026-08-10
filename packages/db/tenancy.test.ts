@@ -17,16 +17,21 @@ import { forOrganization, prisma } from "./tenancy";
 const A = "test-org-a";
 const B = "test-org-b";
 
-let reachable = false;
+/**
+ * Probed at module scope, not in `beforeAll`.
+ *
+ * `runIf` is evaluated when the suite is collected, which happens before any
+ * hook runs — and it takes a boolean, not a predicate. Passing a function makes
+ * every condition truthy, so the first version of this guard never skipped
+ * anything and the suite simply failed when Postgres was down.
+ */
+const reachable = await prisma
+  .$queryRaw`SELECT 1`
+  .then(() => true)
+  .catch(() => false);
 
 beforeAll(async () => {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    reachable = true;
-  } catch {
-    return;
-  }
-
+  if (!reachable) return;
   await cleanup();
   await prisma.organization.createMany({
     data: [
@@ -54,14 +59,14 @@ async function cleanup() {
 }
 
 describe("forOrganization", () => {
-  it.runIf(() => reachable)("returns only the caller's rows", async () => {
+  it.runIf(reachable)("returns only the caller's rows", async () => {
     const db = forOrganization(A);
     const facts = await db.organizationFact.findMany();
     expect(facts).toHaveLength(1);
     expect(facts[0]?.valueText).toBe("6");
   });
 
-  it.runIf(() => reachable)("throws rather than silently rescoping a cross-tenant query", async () => {
+  it.runIf(reachable)("throws rather than silently rescoping a cross-tenant query", async () => {
     // The first version of this silently rewrote the caller's organizationId to
     // the scoped one, so asking for tenant B returned tenant A's rows and looked
     // like it had worked. Failing loudly is the whole point.
@@ -71,7 +76,7 @@ describe("forOrganization", () => {
     ).rejects.toThrow(/scoped to test-org-a/);
   });
 
-  it.runIf(() => reachable)("allows a redundant filter naming its own tenant", async () => {
+  it.runIf(reachable)("allows a redundant filter naming its own tenant", async () => {
     const db = forOrganization(A);
     const facts = await db.organizationFact.findMany({
       where: { organizationId: A },
@@ -79,7 +84,7 @@ describe("forOrganization", () => {
     expect(facts).toHaveLength(1);
   });
 
-  it.runIf(() => reachable)("stamps the organization on create", async () => {
+  it.runIf(reachable)("stamps the organization on create", async () => {
     const db = forOrganization(A);
     const created = await createFact(db, {
       key: "edrpou",
@@ -90,7 +95,7 @@ describe("forOrganization", () => {
     await prisma.organizationFact.delete({ where: { id: created.id } });
   });
 
-  it.runIf(() => reachable)("refuses to update a row belonging to another tenant", async () => {
+  it.runIf(reachable)("refuses to update a row belonging to another tenant", async () => {
     const bFact = await prisma.organizationFact.findFirstOrThrow({
       where: { organizationId: B },
     });
@@ -104,7 +109,7 @@ describe("forOrganization", () => {
     expect(after.valueText).toBe(bFact.valueText);
   });
 
-  it.runIf(() => reachable)("scopes deleteMany, so one tenant cannot clear another", async () => {
+  it.runIf(reachable)("scopes deleteMany, so one tenant cannot clear another", async () => {
     const db = forOrganization(A);
     await db.organizationFact.deleteMany({ where: {} });
     const survivors = await prisma.organizationFact.findMany({
@@ -113,7 +118,7 @@ describe("forOrganization", () => {
     expect(survivors.length).toBeGreaterThan(0);
   });
 
-  it.runIf(() => reachable)("leaves public grant data unfiltered", async () => {
+  it.runIf(reachable)("leaves public grant data unfiltered", async () => {
     const db = forOrganization(A);
     await expect(db.grant.count()).resolves.toBeTypeOf("number");
   });
@@ -122,14 +127,14 @@ describe("forOrganization", () => {
     expect(() => forOrganization("")).toThrow(/requires an organization id/);
   });
 
-  it.runIf(() => reachable)("refuses a model it cannot scope", async () => {
+  it.runIf(reachable)("refuses a model it cannot scope", async () => {
     const db = forOrganization(A);
     await expect(db.criterionAssessment.findMany()).rejects.toThrow(
       /cannot be queried directly/,
     );
   });
 
-  it.runIf(() => reachable)("refuses a unique-key write it cannot filter", async () => {
+  it.runIf(reachable)("refuses a unique-key write it cannot filter", async () => {
     const db = forOrganization(A);
     await expect(
       db.organizationFact.update({ where: { id: "whatever" }, data: {} }),
