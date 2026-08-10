@@ -13,6 +13,7 @@ import {
   rejectCandidate,
 } from "../../../packages/db/confirmation";
 import { ExtractionFailed, extractDocumentFacts } from "../../../packages/db/extraction";
+import { AnswerRejected, answerFact, clearFact } from "../../../packages/db/facts";
 import { currentDb } from "../../lib/session";
 
 export type ActionResult = { ok: true } | { ok: false; message: string };
@@ -61,6 +62,53 @@ export async function uploadDocumentAction(
       ok: false,
       message: "Не вдалося зберегти файл. Спробуйте ще раз за хвилину.",
     };
+  }
+
+  revalidatePath("/profil");
+  return { ok: true };
+}
+
+export async function answerFactAction(
+  _prev: ActionResult | null,
+  form: FormData,
+): Promise<ActionResult> {
+  const ctx = await currentDb();
+  if (!ctx) return { ok: false, message: "Немає активної організації." };
+
+  const key = String(form.get("key") ?? "");
+  const negative = form.get("negative") === "1";
+  const value = form.get("value");
+
+  try {
+    await answerFact(
+      ctx.db,
+      ctx.organizationId,
+      { key, negative, value: typeof value === "string" ? value : null },
+      ctx.user.userId,
+    );
+  } catch (err) {
+    if (err instanceof AnswerRejected) return { ok: false, message: err.message };
+    console.error("answer failed", err);
+    return { ok: false, message: "Не вдалося зберегти відповідь. Спробуйте ще раз." };
+  }
+
+  revalidatePath("/profil");
+  return { ok: true };
+}
+
+export async function clearFactAction(
+  _prev: ActionResult | null,
+  form: FormData,
+): Promise<ActionResult> {
+  const ctx = await currentDb();
+  if (!ctx) return { ok: false, message: "Немає активної організації." };
+
+  try {
+    await clearFact(ctx.db, ctx.organizationId, String(form.get("key") ?? ""), ctx.user.userId);
+  } catch (err) {
+    if (err instanceof AnswerRejected) return { ok: false, message: err.message };
+    console.error("clear failed", err);
+    return { ok: false, message: "Не вдалося очистити поле. Спробуйте ще раз." };
   }
 
   revalidatePath("/profil");

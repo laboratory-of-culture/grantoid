@@ -9,6 +9,7 @@ import { LEGAL_FORM_LABEL_UK, type LegalForm } from "../../../packages/schemas/o
 import { pendingCandidates } from "../../../packages/db/confirmation";
 import { currentDb } from "../../lib/session";
 import { Documents } from "./documents";
+import { FactEditor } from "./fact-editor";
 import { ConfirmationQueue } from "./queue";
 
 export const dynamic = "force-dynamic";
@@ -206,16 +207,18 @@ function FactLine({
         {unknown ? definition.questionUk : (fact?.valueText ?? "—")}
       </div>
 
-      <div className="row">
+      <div className="stack">
         <span className={tag.cls}>
           <tag.Icon size={12} aria-hidden="true" />
           {tag.label}
         </span>
-        {unknown ? (
-          <button type="button" className="btn btn-ghost">
-            Відповісти
-          </button>
-        ) : null}
+        <FactEditor
+          factKey={definition.key}
+          kind={definition.kind}
+          questionUk={definition.questionUk}
+          currentValue={fact?.valueText ?? null}
+          state={state}
+        />
       </div>
     </div>
   );
