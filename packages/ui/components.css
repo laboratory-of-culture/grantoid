@@ -375,6 +375,136 @@ body {
 
 .dialog::backdrop { background: var(--color-neutral-900); opacity: 0.4; }
 
+/* ------------------------------------------------------------------ shell */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.shell-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: var(--border);
+}
+
+.wordmark {
+  font-size: var(--text-md);
+  font-weight: var(--weight-black);
+  letter-spacing: var(--tracking-display);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.shell-body {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  flex: 1;
+}
+
+.shell-main {
+  padding: var(--space-6) var(--space-5);
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .shell-body { grid-template-columns: 1fr; }
+  .nav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: var(--border); }
+  .nav a { border-bottom: 0; border-right: var(--border-quiet); white-space: nowrap; }
+}
+
+/* --------------------------------------------------------------- sections */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-block: var(--space-6);
+  border-top: var(--border);
+}
+
+.section:first-of-type { border-top: 0; padding-top: 0; }
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+/* A profile field: label, what we know, and the action that resolves it.
+ * Unknown rows are not errors — they are questions with an affordance, which is
+ * the whole argument of the product rendered as a row. */
+.fact {
+  display: grid;
+  grid-template-columns: minmax(0, 16rem) minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  align-items: start;
+  padding-block: var(--space-3);
+  border-bottom: var(--border-quiet);
+}
+
+.fact:last-child { border-bottom: 0; }
+
+.fact-label { font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+.fact-value { font-size: var(--text-sm); color: var(--color-neutral-800); min-width: 0; }
+.fact-question { font-size: var(--text-sm); color: var(--color-text-muted); }
+
+@media (max-width: 700px) {
+  .fact { grid-template-columns: 1fr; gap: var(--space-2); }
+}
+
+/* A count, set large. Used for profile completeness and match scores — always
+ * beside its breakdown, never alone (see the explainable-output skill). */
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.stat-value {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-black);
+  letter-spacing: var(--tracking-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label { font-size: var(--text-sm); color: var(--color-text-muted); }
+
+/* A plain proportional bar. No gradient, no rounded cap. */
+.meter {
+  height: var(--space-2);
+  background: var(--color-neutral-300);
+}
+
+.meter > span {
+  display: block;
+  height: 100%;
+  background: var(--color-ink);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.empty {
+  padding: var(--space-6);
+  border: var(--border);
+  background: var(--color-surface-raised);
+}
+
 /* ------------------------------------------------------------------ media */
 
 /* Photographs are grayscale, never tinted. */
