@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",
+    "fast-xml-parser": "^5.10.1",
     "lucide-react": "^0.469.0",
     "mammoth": "^1.12.1",
     "next": "^15.1.3",

@@ -28,12 +28,28 @@ export async function currentDb(): Promise<
   { db: ScopedClient; organizationId: string; user: SessionUser } | null
 > {
   const user = await currentUser();
-  if (!user) return null;
+  // No organization means an operator account, which has no scoped client at
+  // all — deliberately, so operator tooling cannot reach an NGO's documents.
+  if (!user?.organizationId) return null;
   return {
     db: forOrganization(user.organizationId),
     organizationId: user.organizationId,
     user,
   };
+}
+
+/**
+ * Require a platform operator.
+ *
+ * Sends a signed-in non-admin to their own profile rather than to sign-in: they
+ * are authenticated, just not an operator, and a login form would be a
+ * confusing answer to "you may not see this".
+ */
+export async function requireAdmin(): Promise<SessionUser> {
+  const user = await currentUser();
+  if (!user) redirect("/vhid");
+  if (!user.isAdmin) redirect("/profil");
+  return user;
 }
 
 /**

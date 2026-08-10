@@ -19,11 +19,22 @@ export function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
+/**
+ * A signed-in person.
+ *
+ * The organization is optional because the platform operator has none: the
+ * source registry belongs to nobody's NGO, and giving an operator account a
+ * membership would put a real organization's documents one click away from it.
+ * An earlier version required a membership here, which made the admin account
+ * unable to sign in at all — the constraint and the decision contradicted each
+ * other, and the decision is the one worth keeping.
+ */
 export type SessionUser = {
   userId: string;
   email: string;
-  organizationId: string;
-  organizationName: string;
+  isAdmin: boolean;
+  organizationId: string | null;
+  organizationName: string | null;
 };
 
 export function cookieOptions(expires: Date) {
@@ -82,8 +93,7 @@ export async function resolveSession(token: string | undefined): Promise<Session
     return null;
   }
 
-  const membership = session.user.memberships[0];
-  if (!membership) return null;
+  const membership = session.user.memberships[0] ?? null;
 
   const stale = Date.now() - session.lastUsedAt.getTime() > REFRESH_AFTER_DAYS * 86_400_000;
   if (stale) {
@@ -101,8 +111,9 @@ export async function resolveSession(token: string | undefined): Promise<Session
   return {
     userId: session.user.id,
     email: session.user.email,
-    organizationId: membership.organization.id,
-    organizationName: membership.organization.name,
+    isAdmin: session.user.isAdmin,
+    organizationId: membership?.organization.id ?? null,
+    organizationName: membership?.organization.name ?? null,
   };
 }
 

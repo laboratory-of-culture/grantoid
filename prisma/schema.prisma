@@ -143,6 +143,16 @@ model Source {
   kind        SourceKind
   enabled     Boolean    @default(false)
 
+  /// How items are discovered. Separate from `kind`, which says what the source
+  /// *is* — the two are independent, and assuming an aggregator publishes a feed
+  /// is how you find out at implementation time that it does not.
+  discovery   Discovery  @default(RSS)
+  /// The feed for RSS, or the listing page for HTML_LIST.
+  discoveryUrl String?
+  /// Sent on every request. A crawler that does not say who it is and how to
+  /// complain is one a small NGO portal is right to block.
+  userAgent   String?
+
   robotsCheckedAt DateTime?
   robotsAllows    Boolean?
   tosReviewedAt   DateTime?
@@ -155,10 +165,66 @@ model Source {
   lastError         String?   @db.Text
 
   grants    Grant[]
+  items     SourceItem[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([homepageUrl])
+}
+
+enum Discovery {
+  RSS
+  HTML_LIST
+}
+
+/// One thing a source announced, before anyone decided what it is.
+///
+/// Discovery and extraction are separate stages because the sources do not
+/// publish grants — they publish *opportunities*. The Громадський Простір feed
+/// carries procurement tenders, equipment purchases and training schools
+/// alongside actual grant calls, all under one post type. Something has to read
+/// each item and decide, and that decision is where §40's precision is won or
+/// lost — so it gets its own row, its own status, and its own audit trail
+/// rather than being an implicit filter inside a crawler.
+model SourceItem {
+  id       String @id @default(cuid())
+  sourceId String
+  source   Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  /// Stable id within the source: the RSS guid, or the listing path.
+  externalId String
+  url        String
+  title      String
+  summary    String?  @db.Text
+  publishedAt DateTime?
+
+  status ItemStatus @default(NEW)
+  /// Why it was rejected, in the classifier's words. Read before trusting a
+  /// low grant count.
+  statusNote String? @db.Text
+
+  /// Set once the item has been turned into a Grant.
+  grantId String?
+
+  /// Detects a re-announcement of the same item with an edited title.
+  contentHash  String
+  discoveredAt DateTime @default(now())
+  checkedAt    DateTime @default(now())
+
+  @@unique([sourceId, externalId])
+  @@index([sourceId, status])
+  @@index([status, discoveredAt])
+}
+
+enum ItemStatus {
+  NEW
+  /// Classified as a fundable call an NGO could apply to.
+  GRANT
+  /// Classified as something else — a tender, a purchase, a course.
+  NOT_GRANT
+  /// Turned into a Grant record.
+  EXTRACTED
+  FAILED
 }
 
 /// A normalized funding opportunity.
@@ -360,6 +426,10 @@ model OrganizationFact {
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
+  /// Platform operator, not an organization role. Membership.role governs what
+  /// someone may do inside their own NGO; this governs the source registry,
+  /// which belongs to nobody's organization.
+  isAdmin      Boolean  @default(false)
   /// scrypt, with the salt and parameters encoded in the string. Never a plain
   /// hash — see packages/auth/password.ts.
   passwordHash String

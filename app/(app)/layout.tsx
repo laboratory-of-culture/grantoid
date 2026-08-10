@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   Building2,
-  ClipboardCheck,
   FileText,
   Lightbulb,
   ListChecks,
@@ -23,8 +22,10 @@ const NAV = [
   { href: "/kontseptsii", label: "Концепції", Icon: Lightbulb },
   { href: "/zayavky", label: "Заявки", Icon: FileText },
   { href: "/vymohy", label: "Вимоги донора", Icon: ListChecks },
-  { href: "/dzherela", label: "Джерела", Icon: ClipboardCheck },
 ];
+// "Джерела" is deliberately absent: the source registry is operator tooling,
+// not something an NGO manages, and a nav item that redirects on click is worse
+// than no nav item.
 
 /**
  * Guarded once, here, rather than in each page.

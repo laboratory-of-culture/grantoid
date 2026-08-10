@@ -23,6 +23,10 @@ coverage/
 .env.*
 !.env.example
 
+# Admin credentials, written once by scripts/setup-sources.ts. The password
+# exists nowhere else — the database holds only its scrypt hash.
+admin-credentials.txt
+
 # Python spike (superseded by DECISIONS.md D3; fixtures port to evals/)
 __pycache__/
 *.py[cod]
