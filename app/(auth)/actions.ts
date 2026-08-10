@@ -14,14 +14,26 @@ import {
   cookieOptions,
   createSession,
   destroySession,
+  resolveSession,
 } from "../../packages/auth/session";
+import { landingFor } from "../lib/session";
 
 export type AuthResult = { ok: false; message: string } | null;
 
-async function startSession(userId: string): Promise<void> {
+/**
+ * Start a session and return where this person should land.
+ *
+ * The destination is resolved from the session that was just created rather
+ * than assumed, because the two account kinds belong on different screens and
+ * guessing wrong sends one of them to a page that bounces it back to this form.
+ */
+async function startSession(userId: string): Promise<string> {
   const { token, expiresAt } = await createSession(userId);
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, cookieOptions(expiresAt));
+
+  const user = await resolveSession(token);
+  return user ? landingFor(user) : "/vhid";
 }
 
 export async function registerAction(
@@ -43,10 +55,9 @@ export async function registerAction(
     return { ok: false, message: "Не вдалося створити обліковий запис. Спробуйте ще раз." };
   }
 
-  await startSession(userId);
   // Straight to the profile: it is the only screen that does anything useful
   // for an organization that has just arrived.
-  redirect("/profil");
+  redirect(await startSession(userId));
 }
 
 export async function signInAction(_prev: AuthResult, form: FormData): Promise<AuthResult> {
@@ -62,8 +73,7 @@ export async function signInAction(_prev: AuthResult, form: FormData): Promise<A
     return { ok: false, message: "Не вдалося увійти. Спробуйте ще раз." };
   }
 
-  await startSession(userId);
-  redirect("/profil");
+  redirect(await startSession(userId));
 }
 
 export async function signOutAction(): Promise<void> {

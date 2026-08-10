@@ -19,7 +19,17 @@ import { prisma } from "../packages/db/tenancy";
 const BASE = process.env.SMOKE_BASE_URL ?? "http://localhost:3000";
 const EMAIL = process.env.SMOKE_EMAIL ?? "laboratoryofculture@gmail.com";
 
-type Route = { path: string; auth: boolean; expect?: string[] };
+type Route = {
+  path: string;
+  auth: boolean;
+  expect?: string[];
+  /**
+   * Where a redirect must land. Checked because the first version of this script
+   * accepted any 307 as healthy, and so reported the operator account bouncing
+   * from /profil back to the login form as a passing route.
+   */
+  redirectsTo?: string;
+};
 
 /**
  * What to fetch depends on who is signed in, because the two account kinds are
@@ -33,13 +43,18 @@ type Route = { path: string; auth: boolean; expect?: string[] };
  * someone reads it.
  */
 function routesFor(orgName: string | null, isAdmin: boolean): Route[] {
+  const home = orgName ? "/profil" : isAdmin ? "/dzherela" : "/vhid";
+
   return [
-    { path: "/", auth: false },
+    { path: "/", auth: true, redirectsTo: home },
     { path: "/vhid", auth: false, expect: ["Електронна пошта", "Пароль"] },
     { path: "/reyestratsiya", auth: false, expect: ["Назва організації"] },
     {
       path: "/profil",
       auth: true,
+      // An operator has no organization, so it must be sent to the registry —
+      // never back to the login form, which is where this used to loop.
+      redirectsTo: orgName ? undefined : "/dzherela",
       // Redirects for an account with no organization; renders the org's own
       // name for one that has it. The two state labels are checked because the
       // page rendering at all is a weaker claim than the page rendering the
@@ -50,6 +65,7 @@ function routesFor(orgName: string | null, isAdmin: boolean): Route[] {
       path: "/dzherela",
       auth: true,
       expect: isAdmin ? ["Ресурсний центр ГУРТ", "Громадський Простір"] : undefined,
+      redirectsTo: isAdmin ? undefined : "/profil",
     },
   ];
 }
@@ -82,16 +98,26 @@ async function main(): Promise<void> {
     // not enough to call a page healthy.
     const brokeInPlace = body.includes("__next_error__") || body.includes("Application error");
     const missing = (route.expect ?? []).filter((needle) => !body.includes(needle));
+    const redirected = res.status === 307 || res.status === 302 || res.status === 303;
+    const target = redirected ? (res.headers.get("location") ?? "") : null;
+    const wrongTarget =
+      route.redirectsTo !== undefined && (!redirected || !target?.endsWith(route.redirectsTo));
+
     const ok =
-      ((res.status === 200 && !brokeInPlace) || res.status === 307 || res.status === 302) &&
-      missing.length === 0;
+      ((res.status === 200 && !brokeInPlace) || redirected) &&
+      missing.length === 0 &&
+      !wrongTarget;
 
     if (!ok) failures += 1;
     const label = brokeInPlace
       ? `${res.status} (error boundary)`
-      : missing.length > 0
-        ? `${res.status} — missing: ${missing.join(", ")}`
-        : String(res.status);
+      : wrongTarget
+        ? `${res.status} → ${target ?? "no redirect"}, expected ${route.redirectsTo}`
+        : missing.length > 0
+          ? `${res.status} — missing: ${missing.join(", ")}`
+          : redirected
+            ? `${res.status} → ${target}`
+            : String(res.status);
     console.log(`${ok ? "ok  " : "FAIL"} ${route.path.padEnd(16)} ${label}`);
   }
 
