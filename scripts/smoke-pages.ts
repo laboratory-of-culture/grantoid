@@ -62,6 +62,14 @@ function routesFor(orgName: string | null, isAdmin: boolean): Route[] {
       expect: orgName ? [orgName, "Підтверджено", "Зі слів організації"] : undefined,
     },
     {
+      path: "/mozhlyvosti",
+      auth: true,
+      // Renders whether or not a feed has been built — the empty state is a
+      // screen, not an absence, and it is the one most organizations see first.
+      expect: orgName ? ["Гранти для вашої організації"] : undefined,
+      redirectsTo: orgName ? undefined : "/dzherela",
+    },
+    {
       path: "/dzherela",
       auth: true,
       expect: isAdmin ? ["Ресурсний центр ГУРТ", "Громадський Простір"] : undefined,

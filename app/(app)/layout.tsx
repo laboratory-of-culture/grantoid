@@ -27,7 +27,7 @@ import { signOutAction } from "../(auth)/actions";
  */
 const NAV: { href: string; label: string; Icon: typeof Building2; ready: boolean }[] = [
   { href: "/profil", label: "Профіль організації", Icon: Building2, ready: true },
-  { href: "/mozhlyvosti", label: "Можливості", Icon: Search, ready: false },
+  { href: "/mozhlyvosti", label: "Можливості", Icon: Search, ready: true },
   { href: "/kontseptsii", label: "Концепції", Icon: Lightbulb, ready: false },
   { href: "/zayavky", label: "Заявки", Icon: FileText, ready: false },
   { href: "/vymohy", label: "Вимоги донора", Icon: ListChecks, ready: false },
