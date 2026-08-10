@@ -8,6 +8,7 @@
  * document. Cleans up after itself.
  */
 
+import { acceptCandidate } from "../packages/db/confirmation";
 import { deleteDocument, uploadDocument } from "../packages/db/documents";
 import { extractDocumentFacts } from "../packages/db/extraction";
 import { checkRuntime } from "../packages/llm/ollama";
@@ -74,6 +75,42 @@ async function main(): Promise<void> {
       `  ${summary.discarded} proposal(s) were dropped because the quotation was\n` +
         "  not in the document. That check is the point of the agent.\n",
     );
+  }
+
+  // --- the confirmation gate ------------------------------------------------
+  const first = candidates[0];
+  if (first) {
+    console.log(`confirming    ${first.key}`);
+    await acceptCandidate(db, first.id, null, "smoke-user");
+
+    const fact = await db.organizationFact.findFirst({ where: { key: first.key } });
+    const citations = await prisma.citation.findMany({
+      where: { organizationFactId: fact?.id },
+    });
+    const audit = await db.auditEntry.findMany({
+      where: { subjectId: fact?.id },
+      orderBy: { at: "desc" },
+    });
+
+    console.log(`  state       ${fact?.state}  confirmedAt ${fact?.confirmedAt ? "set" : "MISSING"}`);
+    console.log(`  citations   ${citations.length}`);
+    console.log(`  audit       ${audit.map((a) => a.action).join(", ") || "none"}`);
+
+    // What makes a fact usable in an application. The first version of this
+    // asserted `fact.state === first.state`, which encoded the bug it was meant
+    // to catch: a proposal accepted but never promoted still looks fine by every
+    // other measure.
+    const expected = first.state === "EXPLICIT_NEGATIVE" ? "EXPLICIT_NEGATIVE" : "CONFIRMED";
+    const ok =
+      fact?.state === expected &&
+      fact.confirmedAt !== null &&
+      citations.length > 0 &&
+      audit.length > 0;
+    if (fact?.state !== expected) {
+      console.log(`  expected state ${expected}, got ${fact?.state}`);
+    }
+    console.log(`\n  gate ${ok ? "held" : "FAILED"}\n`);
+    if (!ok) process.exitCode = 1;
   }
 
   await deleteDocument(db, doc.id);

@@ -14,6 +14,17 @@
 
 import { forOrganization, prisma, type ScopedClient } from "../../packages/db/tenancy";
 
+/**
+ * Who is acting. STUB — returns null until authentication exists.
+ *
+ * Null is written into the audit log as an unattributed action, which is
+ * honest: right now nobody is identified. It is not a placeholder user id,
+ * because a fabricated actor in an audit trail is worse than an absent one.
+ */
+export function currentUserId(): string | null {
+  return process.env.GRANT_AI_USER_ID ?? null;
+}
+
 export async function currentOrganizationId(): Promise<string | null> {
   const fromEnv = process.env.GRANT_AI_ORG_ID;
   if (fromEnv) return fromEnv;

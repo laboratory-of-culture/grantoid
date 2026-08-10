@@ -104,6 +104,55 @@ The `.py` files stay in the tree until the fixtures are ported into
 
 ---
 
+## D7 — The extraction agent does not reason
+
+**Date:** 2026-08-10 · **Status:** accepted · **Contrast with:** D6
+
+`think: false` for the Organization Knowledge agent, opposite to the eligibility
+agent.
+
+**Why.** Measured on the same synthetic statute, one variable changed:
+
+| | think on | think off |
+|---|---|---|
+| latency | 258.6s | **21.7s** |
+| facts proposed | 6 | 5 |
+| `non_profit_status` extracted | **no** | **yes** |
+| inferred-not-stated facts | 2 | **0** |
+
+Faster *and* better, which was not the expected trade. Reasoning made the model
+infer: it derived `geographic_coverage` and `target_audiences` from a sentence
+about the organization's *mission*, which the prompt explicitly forbids — and it
+missed the most literal fact in the document, one the statute states twice and
+which gates eligibility on two of the four fixture grants.
+
+The tasks are not alike. Eligibility is a judgement, and reasoning bought a
+measurable 80% → 88% there. Extraction is mechanical — find the sentence, copy
+it — and thinking gives the model room to editorialise where it should be
+transcribing. `model-runtime` classifies extraction as high-volume,
+low-judgement work; this is what that means in practice.
+
+**Caveat: one document.** The direction is clear and the latency difference is
+not marginal, but this is n=1. Re-measure on real statutes once the end-to-end
+loop exists, which is the point at which quality problems become visible where
+they actually matter.
+
+**Two bugs the smoke test found, both invisible to unit tests:**
+
+- Accepting a candidate wrote `candidate.state` straight through, so a positive
+  fact stayed `SELF_REPORTED` forever and never became usable in an application.
+  The gate looked closed — citation, timestamp and audit entry all present —
+  while the thing it guards was unreachable. The smoke's own assertion had
+  encoded the bug by comparing against the candidate's state.
+- Deleting a document cascades its citations away, stranding any `CONFIRMED`
+  fact whose last citation it was. The database enforces "confirmed implies
+  cited" on write and cannot enforce it through a cascade. Deletion now demotes
+  those facts to `SELF_REPORTED` and logs `fact.provenance_lost` — the
+  organization asked for the document to go, and D1's promise means it actually
+  goes.
+
+---
+
 ## D6 — The eligibility agent reasons before answering
 
 **Date:** 2026-08-10 · **Status:** accepted · **Builds on:** D5

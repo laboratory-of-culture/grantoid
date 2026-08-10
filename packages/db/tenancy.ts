@@ -23,6 +23,7 @@ const DIRECTLY_SCOPED = new Set([
   "FactCandidate",
   "Document",
   "Match",
+  "AuditEntry",
 ]);
 
 /**

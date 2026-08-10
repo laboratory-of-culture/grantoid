@@ -356,6 +356,46 @@ model OrganizationFact {
   @@index([organizationId, state])
 }
 
+/// Append-only record of who decided what.
+///
+/// The compliance backbone for a product whose failure mode is a confidently
+/// wrong claim made in an organization's name. `modelTag` and
+/// `promptFingerprint` on agent entries are what make "why did it say that in
+/// March" answerable — without them the log records that something happened and
+/// not what produced it.
+///
+/// Never log document contents or fact values: log the subject and the
+/// transition (see the pii-and-donor-data skill).
+model AuditEntry {
+  id             String   @id @default(cuid())
+  organizationId String
+  at             DateTime @default(now())
+
+  actorType ActorType
+  /// User id, or the agent name. Null for a system action.
+  actorId   String?
+
+  action      String
+  subjectType String
+  subjectId   String
+
+  /// State transition, not content. e.g. "PENDING" → "ACCEPTED".
+  fromState String?
+  toState   String?
+
+  modelTag          String?
+  promptFingerprint String?
+
+  @@index([organizationId, at])
+  @@index([subjectType, subjectId])
+}
+
+enum ActorType {
+  USER
+  AGENT
+  SYSTEM
+}
+
 /// A fact an extraction proposed, waiting for a person to accept or reject it.
 ///
 /// Extraction cannot write `OrganizationFact` directly: there is one row per

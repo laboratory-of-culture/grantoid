@@ -111,6 +111,49 @@ export async function deleteDocument(
 
   await prisma.document.delete({ where: { id: owned.id } });
   await store.delete(owned.storageKey);
+  await downgradeFactsLosingProvenance(db);
+}
+
+/**
+ * Demote any CONFIRMED fact that just lost its last citation.
+ *
+ * Deleting a document cascades its citations away, and a CONFIRMED fact with no
+ * citation is exactly the state `org-knowledge-base` forbids — a claim usable in
+ * a funding application that nobody can trace to a source. The database enforces
+ * that on write and cannot enforce it through a cascade, so it is enforced here.
+ *
+ * Demotion rather than refusing the delete: the organization asked for its
+ * document to go, and `pii-and-donor-data` says a deletion must actually delete.
+ * The fact survives as SELF_REPORTED — still good enough to inform a match,
+ * no longer good enough to state to a donor — and the user is asked again if it
+ * matters.
+ */
+async function downgradeFactsLosingProvenance(db: ScopedClient): Promise<number> {
+  const stranded = await db.organizationFact.findMany({
+    where: { state: "CONFIRMED", citations: { none: {} } },
+    select: { id: true, key: true, organizationId: true },
+  });
+  if (stranded.length === 0) return 0;
+
+  await prisma.$transaction([
+    prisma.organizationFact.updateMany({
+      where: { id: { in: stranded.map((f) => f.id) } },
+      data: { state: "SELF_REPORTED", confirmedAt: null, confirmedByUserId: null },
+    }),
+    prisma.auditEntry.createMany({
+      data: stranded.map((f) => ({
+        organizationId: f.organizationId,
+        actorType: "SYSTEM" as const,
+        action: "fact.provenance_lost",
+        subjectType: "OrganizationFact",
+        subjectId: f.id,
+        fromState: "CONFIRMED",
+        toState: "SELF_REPORTED",
+      })),
+    }),
+  ]);
+
+  return stranded.length;
 }
 
 /**

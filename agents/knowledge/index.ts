@@ -83,9 +83,22 @@ export async function extract(
   text: string,
   opts: CompleteOptions = {},
 ): Promise<ExtractionRun> {
-  // Same reasoning as the eligibility agent: the judgement that matters here is
-  // "does the document actually say this", and reasoning materially improves it.
-  const options: CompleteOptions = { think: true, ...opts };
+  /**
+   * Reasoning off, unlike the eligibility agent.
+   *
+   * The first version copied `think: true` across from eligibility by
+   * inertia, and the tasks are not alike: eligibility is a judgement, where
+   * reasoning bought a measurable 80% → 88% on the golden set; extraction is
+   * mechanical — find the sentence, copy it — and `model-runtime` classifies it
+   * as high-volume, low-judgement work.
+   *
+   * It cost 258s on a 1.3KB statute, which does not survive a real 30KB one.
+   * The honest measurement of what reasoning is worth here comes from the
+   * end-to-end loop, not from a flag flipped in isolation, so this stays off
+   * until upload → extract → confirm → match runs and shows where quality
+   * actually sags.
+   */
+  const options: CompleteOptions = { think: false, ...opts };
 
   const completion = await complete(
     systemPrompt(),

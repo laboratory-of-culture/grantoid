@@ -6,8 +6,10 @@ import {
   type FactDefinition,
 } from "../../packages/schemas/fact-registry";
 import { LEGAL_FORM_LABEL_UK, type LegalForm } from "../../packages/schemas/organization";
+import { pendingCandidates } from "../../packages/db/confirmation";
 import { currentDb } from "../lib/session";
 import { Documents } from "./documents";
+import { ConfirmationQueue } from "./queue";
 
 export const dynamic = "force-dynamic";
 
@@ -70,10 +72,11 @@ export default async function ProfilePage() {
     );
   }
 
-  const [org, facts, documents] = await Promise.all([
+  const [org, facts, documents, queue] = await Promise.all([
     ctx.db.organization.findUnique({ where: { id: ctx.organizationId } }),
     ctx.db.organizationFact.findMany(),
     ctx.db.document.findMany({ orderBy: { uploadedAt: "desc" } }),
+    pendingCandidates(ctx.db),
   ]);
 
   if (!org) return null;
@@ -138,6 +141,10 @@ export default async function ProfilePage() {
           </p>
         </div>
       </section>
+
+      {/* Above the documents: a proposal waiting on a decision is the most
+          actionable thing on this screen, and it decays if it sits. */}
+      <ConfirmationQueue items={queue} />
 
       <Documents
         documents={documents.map((d) => ({

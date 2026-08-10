@@ -457,6 +457,20 @@ body {
   .fact { grid-template-columns: 1fr; gap: var(--space-2); }
 }
 
+/* A proposed fact beside the sentence it was read from. Two columns facing each
+ * other is the evidence pattern the whole product argues from — the same shape
+ * the match breakdown uses for a donor clause and a profile line. */
+.candidate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (max-width: 800px) {
+  .candidate { grid-template-columns: 1fr; }
+}
+
 /* A count, set large. Used for profile completeness and match scores — always
  * beside its breakdown, never alone (see the explainable-output skill). */
 .stat {
