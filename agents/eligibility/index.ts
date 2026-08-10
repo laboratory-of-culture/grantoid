@@ -166,6 +166,42 @@ export type EligibilityRun = {
  * never touched here — those changes go through the corrections list, where they
  * are counted.
  */
+/**
+ * Drop list entries that say the list is empty.
+ *
+ * A model asked for "blockers" will answer «Немає обов'язкових блокерів» rather
+ * than return `[]`, and a one-element array containing that sentence renders on
+ * the feed as though it were a blocker — the opposite of what it says. The empty
+ * set has a representation already; prose describing it is not a second one.
+ */
+// `(?!\p{L})` and not `\b`: JavaScript defines `\b` through `\w`, which holds no
+// Cyrillic, so `/нема\b/` never matches a Ukrainian string. Third time in this
+// codebase — see classify-rules.ts and place.ts.
+const EMPTY_SET_PROSE =
+  /^\s*(немає|нема(?!\p{L})|відсутн|не виявлено|жодн|none(?!\p{L})|no\s+(blockers|issues)|n\/?a|[-—–])/iu;
+
+/** A rule slug the model prefixed onto its own sentence: "geography: …". */
+const LEADING_SLUG = /^\s*[a-z][a-z0-9-]{2,}\s*:\s*/;
+
+/** An entry that is only an enum name — "NOT_ELIGIBLE" — and says nothing. */
+const BARE_ENUM = /^[A-Z_]{4,}$/;
+
+export function meaningfulEntries(values: readonly string[]): string[] {
+  const out: string[] = [];
+
+  for (const value of values) {
+    // The slug is addressed to the system, not to a grant manager, and the
+    // criterion breakdown already names the rule beside its quote.
+    const text = value.replace(LEADING_SLUG, "").trim();
+    if (text.length === 0) continue;
+    if (BARE_ENUM.test(text)) continue;
+    if (EMPTY_SET_PROSE.test(text)) continue;
+    out.push(text);
+  }
+
+  return out;
+}
+
 function coherent(c: MatchResult["criteria"][number]): MatchResult["criteria"][number] {
   if (c.verdict === "UNCERTAIN") return c;
   if (c.uncertaintyReason === null && c.missingInformation === null) return c;
@@ -222,7 +258,14 @@ function applyEvidenceConstraints(
   // model's original output, which threw away the coherence pass above in
   // exactly the case that needed it: a result with no verdict corrections at
   // all, carrying a stray reason on a MATCH.
-  if (corrections.length === 0) return { result: { ...result, criteria }, corrections };
+  const tidied = {
+    ...result,
+    criteria,
+    blockers: meaningfulEntries(result.blockers),
+    openQuestions: meaningfulEntries(result.openQuestions),
+  };
+
+  if (corrections.length === 0) return { result: tidied, corrections };
 
   // The overall verdict is derived, so it has to be recomputed from the
   // corrected criteria rather than left as the model wrote it.
@@ -242,8 +285,7 @@ function applyEvidenceConstraints(
 
   return {
     result: {
-      ...result,
-      criteria,
+      ...tidied,
       overall,
       recommend: shouldRecommend(assessed, result.matchScore),
     },

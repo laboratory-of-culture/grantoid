@@ -23,11 +23,36 @@ import { prisma } from "../packages/db/tenancy";
 const BASE = process.env.SMOKE_BASE_URL ?? "http://localhost:3000";
 const OUT = path.join(process.cwd(), "public", "_preview");
 
-const PAGES = [
-  { file: "profil.html", path: "/profil", email: "laboratoryofculture@gmail.com" },
+const NGO = "laboratoryofculture@gmail.com";
+
+const PAGES: { file: string; path: string; email: string | null }[] = [
+  { file: "profil.html", path: "/profil", email: NGO },
+  { file: "mozhlyvosti.html", path: "/mozhlyvosti", email: NGO },
   { file: "dzherela.html", path: "/dzherela", email: "admin@grant-assistant.local" },
   { file: "vhid.html", path: "/vhid", email: null },
 ];
+
+/**
+ * The grant screen needs an id, and hard-coding one goes stale the moment the
+ * corpus is re-extracted. The best-fitting match is the useful one to look at.
+ */
+async function grantDetailPage(): Promise<{ file: string; path: string; email: string } | null> {
+  const user = await prisma.user.findUnique({
+    where: { email: NGO },
+    include: { memberships: true },
+  });
+  const organizationId = user?.memberships[0]?.organizationId;
+  if (!organizationId) return null;
+
+  const match = await prisma.match.findFirst({
+    where: { organizationId },
+    orderBy: [{ recommend: "desc" }, { matchScore: "desc" }],
+    select: { grantId: true },
+  });
+  if (!match) return null;
+
+  return { file: "hrant.html", path: `/hranty/${match.grantId}`, email: NGO };
+}
 
 /** Everything executable goes. What remains is markup and stylesheet links. */
 function freeze(html: string): string {
@@ -50,7 +75,10 @@ async function main(): Promise<void> {
 
   await mkdir(OUT, { recursive: true });
 
-  for (const page of PAGES) {
+  const detail = await grantDetailPage();
+  const pages = detail ? [...PAGES, detail] : PAGES;
+
+  for (const page of pages) {
     const headers: Record<string, string> = {};
 
     if (page.email) {
