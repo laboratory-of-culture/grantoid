@@ -7,6 +7,7 @@ import {
 } from "../../packages/schemas/fact-registry";
 import { LEGAL_FORM_LABEL_UK, type LegalForm } from "../../packages/schemas/organization";
 import { currentDb } from "../lib/session";
+import { Documents } from "./documents";
 
 export const dynamic = "force-dynamic";
 
@@ -69,9 +70,10 @@ export default async function ProfilePage() {
     );
   }
 
-  const [org, facts] = await Promise.all([
+  const [org, facts, documents] = await Promise.all([
     ctx.db.organization.findUnique({ where: { id: ctx.organizationId } }),
     ctx.db.organizationFact.findMany(),
+    ctx.db.document.findMany({ orderBy: { uploadedAt: "desc" } }),
   ]);
 
   if (!org) return null;
@@ -136,6 +138,17 @@ export default async function ProfilePage() {
           </p>
         </div>
       </section>
+
+      <Documents
+        documents={documents.map((d) => ({
+          id: d.id,
+          kind: d.kind,
+          filename: d.filename,
+          sizeBytes: d.sizeBytes,
+          uploadedAt: d.uploadedAt.toISOString(),
+          extractedAt: d.extractedAt?.toISOString() ?? null,
+        }))}
+      />
 
       {GROUP_ORDER.map((group) => {
         const definitions = FACT_REGISTRY.filter((d) => d.group === group);

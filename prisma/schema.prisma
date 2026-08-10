@@ -367,12 +367,18 @@ model Document {
   sizeBytes  Int
   pageCount  Int?
 
+  /// Detects a re-upload of the same file. Unique per organization rather than
+  /// globally — two NGOs may legitimately hold the same donor guidelines PDF,
+  /// and a global constraint would let one learn that the other has it.
+  contentHash String
+
   uploadedAt      DateTime  @default(now())
   extractedAt     DateTime?
   extractionError String?   @db.Text
 
   citations Citation[]
 
+  @@unique([organizationId, contentHash])
   @@index([organizationId, kind])
 }
 

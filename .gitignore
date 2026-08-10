@@ -33,6 +33,10 @@ venv/
 # baseline go in docs/DECISIONS.md, not here.
 evals/results/
 
+# Uploaded documents. Never committed — these are an organization's statutes and
+# previous applications (pii-and-donor-data).
+.storage/
+
 # Editors / OS
 .idea/
 .vscode/
