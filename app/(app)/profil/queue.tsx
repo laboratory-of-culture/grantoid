@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { Check, FileText, Pencil, X } from "lucide-react";
 
+import { AiNotice } from "../../components/beta";
 import {
   acceptCandidateAction,
   rejectCandidateAction,
@@ -48,6 +49,7 @@ export function ConfirmationQueue({ items }: { items: QueueItem[] }) {
     <section className="section">
       <div className="section-head">
         <h2 className="h3">Факти на перевірку</h2>
+        <AiNotice detail="звірте з документом нижче" />
         <span className="kicker">{items.length}</span>
       </div>
 

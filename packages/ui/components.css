@@ -332,6 +332,25 @@ body {
 .nav a:hover { background: var(--color-neutral-200); }
 .nav a[aria-current="page"] { background: var(--color-ink); color: var(--color-ground); }
 
+/* A section that exists in the plan but not yet in the product. Shown rather
+ * than hidden, because during trial operation an NGO deciding whether this tool
+ * is worth its time is better served by seeing what is coming than by a shorter
+ * menu — but it is not a link, because a nav item that 404s is worse than one
+ * that is honestly greyed. */
+.nav-pending {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--border-quiet);
+  color: var(--color-neutral-500);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: default;
+}
+
+.nav-pending .tag { margin-inline-start: auto; }
+
 /* ------------------------------------------------------------------ table */
 
 .table-wrap { overflow-x: auto; }
@@ -540,6 +559,55 @@ body {
   padding: var(--space-6);
   border: var(--border);
   background: var(--color-surface-raised);
+}
+
+/* -------------------------------------------------- provisional statements */
+
+/* The beta notice. Accent-bordered rather than accent-filled: it has to be
+ * unmissable without competing with the accent colour's other job, which is
+ * marking a blocking eligibility problem. A product-status banner that looks
+ * like a rejection is a banner that teaches people to ignore rejections. */
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface-raised);
+  border-bottom: var(--rule-weight) solid var(--color-accent-500);
+}
+
+.banner-icon { flex: none; color: var(--color-accent-700); }
+.banner-text { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+
+.banner-title {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.banner-body {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-800);
+  max-width: var(--measure);
+  line-height: var(--leading-normal);
+}
+
+.banner-dismiss { flex: none; margin-inline-start: auto; align-self: center; }
+
+/* Rides with a single AI conclusion, every time it is read. The banner is
+ * dismissed once; this is not dismissible, because the claim it qualifies is
+ * regenerated on every page. */
+.ai-note {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
 }
 
 /* ------------------------------------------------------------------ media */
