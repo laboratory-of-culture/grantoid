@@ -222,18 +222,31 @@ function applyEvidenceConstraints(
   };
 }
 
+/**
+ * Reasoning is on by default for this agent, and only this agent.
+ *
+ * Measured on the golden set with qwen3:4b: thinking off collapses half the
+ * UNCERTAIN pairs even with the evidence constraints applied; thinking on
+ * collapses none, and per-criterion agreement goes 80% → 88%. It costs about
+ * 3.3× the latency, which is affordable here because matching is queue work
+ * against a feed, not something a person waits on.
+ *
+ * Set `think: false` explicitly to measure the difference again after a model
+ * change — see docs/DECISIONS.md D6.
+ */
 export async function assess(
   org: OrganizationProfile,
   grant: Grant,
   opts: CompleteOptions = {},
 ): Promise<EligibilityRun> {
+  const options: CompleteOptions = { think: true, ...opts };
   // The shape schema constrains decoding; the semantic schema runs after and
   // rejects a verdict that reached past its evidence. See agent-authoring.
   const completion = await complete(
     systemPrompt(),
     userPrompt(org, grant),
     MatchResultShape,
-    opts,
+    options,
   );
 
   if (completion.parsed === null) {

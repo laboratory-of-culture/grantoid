@@ -104,6 +104,47 @@ The `.py` files stay in the tree until the fixtures are ported into
 
 ---
 
+## D6 — The eligibility agent reasons before answering
+
+**Date:** 2026-08-10 · **Status:** accepted · **Builds on:** D5
+
+`think: true` is the default for the eligibility agent, and only that agent.
+
+**Why.** Measured on the golden set, same model, prompt, seed and constraints:
+
+| | prompt only | + constraints | + constraints & think |
+|---|---|---|---|
+| **unknown-collapse** | 100% | 50% | **0%** |
+| criterion exact | 70% | 80% | **88%** |
+| criterion within one rung | 85% | 85% | **96%** |
+| overall verdict exact | 63% | 75% | 75% |
+| false-eligible | 0% | 0% | 0% |
+| median latency | 25s | 25s | **82s** |
+
+Thinking is what closes the gap the constraints cannot reach. The constraints
+enforce the rule where a single fact resolves it; thinking is what stops the
+model misreading a fact it *does* have — the Zhytomyr-fails-a-Ukraine-rule error
+from D5 does not recur.
+
+**The cost is affordable here and would not be everywhere.** 82 seconds a pair is
+fine for matching, which is queue work against a feed that regenerates when a
+grant or a profile changes. It would not be fine for anything a person waits on,
+which is why this is set per agent rather than in the runtime seam.
+
+**What the remaining misses are.** Two pairs, both one rung, both toward
+*caution*: where the label says `LIKELY_NOT_ELIGIBLE` the model says
+`UNCERTAIN`. That is the safe direction of error for this product — it surfaces a
+question rather than a rejection — and both labels are ones the fixture notes
+already flag as close calls.
+
+**Open.** Feed recall sits at 67%: one pair the labels say should reach the feed
+does not, because `matchScore` fell under `RECOMMEND_SCORE_FLOOR`. The floor was
+a starting value, and this is the eval telling us to tune it. Do not move it
+without re-running both directions — lowering it trades recall for precision, and
+precision is the metric §40 says the product is judged on.
+
+---
+
 ## D5 — The unknown rule is enforced in code, not asked for in the prompt
 
 **Date:** 2026-08-10 · **Status:** accepted · **Refines:** D1, D2
