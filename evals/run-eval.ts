@@ -35,6 +35,8 @@ async function main(): Promise<void> {
   console.log(`pairs      ${labels.length}\n`);
 
   const outcomes: PairOutcome[] = [];
+  /** How often the model reached past its evidence and had to be constrained. */
+  let corrections = 0;
 
   for (const label of labels) {
     const grant = grantById.get(label.grant)!;
@@ -74,12 +76,20 @@ async function main(): Promise<void> {
     console.log(
       `${mark} ${verdict} (gold ${label.overall})  ` +
         `${(run.usage.latencyMs / 1000).toFixed(1)}s  ${run.usage.promptTokens}p/${run.usage.outputTokens}o` +
+        (run.corrections.length > 0 ? `  ${run.corrections.length} corrected` : "") +
         (run.error ? `  [${run.error.slice(0, 80)}]` : ""),
     );
+    for (const c of run.corrections) {
+      console.log(`         ${c.ruleKey}: ${c.from} → ${c.to}  (${c.reason})`);
+    }
+    corrections += run.corrections.length;
   }
 
   const r = report(outcomes);
   console.log(`\n${formatReport(r)}`);
+  console.log(
+    `\n  evidence constraints   ${corrections} verdict(s) corrected after generation`,
+  );
 
   const dir = path.join(process.cwd(), "evals", "results");
   mkdirSync(dir, { recursive: true });

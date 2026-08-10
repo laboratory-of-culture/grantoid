@@ -104,6 +104,58 @@ The `.py` files stay in the tree until the fixtures are ported into
 
 ---
 
+## D5 — The unknown rule is enforced in code, not asked for in the prompt
+
+**Date:** 2026-08-10 · **Status:** accepted · **Refines:** D1, D2
+
+After generation, every criterion whose rule names a `resolvingFactKey` is
+checked against that fact's stored state and corrected where the model reached
+past its evidence: an unanswered fact forces `UNCERTAIN`, and only
+`EXPLICIT_NEGATIVE` lets a `NOT_ELIGIBLE` stand. The overall verdict is then
+recomputed from the corrected criteria. Corrections are recorded, not applied
+silently.
+
+**Why.** The first eval run against `qwen3:4b` collapsed **every** `UNCERTAIN`
+pair — once into `MATCH`, once into `NOT_ELIGIBLE`, on the same empty profile
+field. The rule was stated clearly in the prompt. A 4B model does not reliably
+follow it.
+
+It does not have to. Which fact resolves which rule is recorded data, and the
+fact's state is known exactly, so the product's central claim never needed to
+depend on a model obeying an instruction. `permittedVerdicts` already existed in
+`packages/schemas/ladder.ts`; it simply was not wired into the agent.
+
+**Baseline, same model, same prompt, same seed:**
+
+| Metric | Prompt only | With constraints |
+|---|---|---|
+| unknown-collapse | 100% | 50% |
+| overall verdict exact | 63% | 75% |
+| criterion exact | 70% | 80% |
+| false-eligible | 0% | 0% |
+| verbatim citations | 100% | 100% |
+
+`qwen3:4b`, `num_ctx` 16384, seed 7, think off, prompt `9daf7a1ccd20`, 8 pairs,
+median 25s per pair.
+
+**What the constraint cannot fix.** The residual misses are judgement errors on
+facts the profile *does* state — the model read a Zhytomyr organization as
+failing a "Ukraine, EU or UK" geography rule. No amount of post-hoc constraint
+repairs a wrong reading of a known fact; that is model capability, and it is the
+honest measure of what 4B buys us.
+
+**Consequences.**
+
+- The correction count is a model-quality signal. A model that needs correcting
+  often is one to replace, and that is only visible because the count is
+  recorded rather than the fix being silent.
+- Next experiments, in order: `--think` on qwen3, then a larger model, then
+  prompt work. Prompt work is last because the enforceable half is now enforced.
+- The remaining `unknown-collapse` at 50% is a single pair whose miss comes from
+  the geography error above, not from an uncorrected unknown.
+
+---
+
 ## D4 — Absence of data is a stored state, not a NULL
 
 **Date:** 2026-08-10 · **Status:** accepted
