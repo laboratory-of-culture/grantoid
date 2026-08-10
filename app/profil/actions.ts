@@ -7,6 +7,7 @@ import {
   deleteDocument,
   uploadDocument,
 } from "../../packages/db/documents";
+import { ExtractionFailed, extractDocumentFacts } from "../../packages/db/extraction";
 import { currentDb } from "../lib/session";
 
 export type ActionResult = { ok: true } | { ok: false; message: string };
@@ -54,6 +55,31 @@ export async function uploadDocumentAction(
     return {
       ok: false,
       message: "Не вдалося зберегти файл. Спробуйте ще раз за хвилину.",
+    };
+  }
+
+  revalidatePath("/profil");
+  return { ok: true };
+}
+
+export async function extractDocumentAction(
+  _prev: ActionResult | null,
+  form: FormData,
+): Promise<ActionResult> {
+  const ctx = await currentDb();
+  if (!ctx) return { ok: false, message: "Немає активної організації." };
+
+  const id = String(form.get("id") ?? "");
+  if (!id) return { ok: false, message: "Не вказано документ." };
+
+  try {
+    await extractDocumentFacts(ctx.db, id);
+  } catch (err) {
+    if (err instanceof ExtractionFailed) return { ok: false, message: err.message };
+    console.error("extraction failed", err);
+    return {
+      ok: false,
+      message: "Не вдалося опрацювати документ. Спробуйте ще раз за хвилину.",
     };
   }
 

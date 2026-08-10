@@ -1,9 +1,14 @@
 "use client";
 
 import { useActionState } from "react";
-import { FileText, Trash2, Upload } from "lucide-react";
+import { FileText, ScanText, Trash2, Upload } from "lucide-react";
 
-import { deleteDocumentAction, uploadDocumentAction, type ActionResult } from "./actions";
+import {
+  deleteDocumentAction,
+  extractDocumentAction,
+  uploadDocumentAction,
+  type ActionResult,
+} from "./actions";
 
 export type DocumentRow = {
   id: string;
@@ -33,6 +38,10 @@ export function Documents({ documents }: { documents: DocumentRow[] }) {
     deleteDocumentAction,
     null,
   );
+  const [extractState, runExtract, extracting] = useActionState<
+    ActionResult | null,
+    FormData
+  >(extractDocumentAction, null);
 
   return (
     <section className="section">
@@ -90,6 +99,11 @@ export function Documents({ documents }: { documents: DocumentRow[] }) {
             {deleteState.message}
           </p>
         ) : null}
+        {extractState && !extractState.ok ? (
+          <p className="field-error" role="alert">
+            {extractState.message}
+          </p>
+        ) : null}
       </form>
 
       {documents.length === 0 ? (
@@ -132,17 +146,31 @@ export function Documents({ documents }: { documents: DocumentRow[] }) {
                     )}
                   </td>
                   <td>
-                    <form action={remove}>
-                      <input type="hidden" name="id" value={doc.id} />
-                      <button
-                        type="submit"
-                        className="btn btn-ghost"
-                        aria-label={`Видалити ${doc.filename}`}
-                      >
-                        <Trash2 size={14} aria-hidden="true" />
-                        Видалити
-                      </button>
-                    </form>
+                    <div className="row">
+                      <form action={runExtract}>
+                        <input type="hidden" name="id" value={doc.id} />
+                        <button
+                          type="submit"
+                          className="btn btn-secondary"
+                          disabled={extracting}
+                          aria-label={`Витягти факти з ${doc.filename}`}
+                        >
+                          <ScanText size={14} aria-hidden="true" />
+                          {doc.extractedAt ? "Опрацювати ще раз" : "Витягти факти"}
+                        </button>
+                      </form>
+                      <form action={remove}>
+                        <input type="hidden" name="id" value={doc.id} />
+                        <button
+                          type="submit"
+                          className="btn btn-ghost"
+                          aria-label={`Видалити ${doc.filename}`}
+                        >
+                          <Trash2 size={14} aria-hidden="true" />
+                          Видалити
+                        </button>
+                      </form>
+                    </div>
                   </td>
                 </tr>
               ))}

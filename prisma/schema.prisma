@@ -313,9 +313,10 @@ model Organization {
   /// Share of registry keys whose fact is not UNKNOWN. Drives onboarding.
   profileCompleteness Float @default(0)
 
-  facts     OrganizationFact[]
-  documents Document[]
-  matches   Match[]
+  facts      OrganizationFact[]
+  documents  Document[]
+  matches    Match[]
+  candidates FactCandidate[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -355,6 +356,49 @@ model OrganizationFact {
   @@index([organizationId, state])
 }
 
+/// A fact an extraction proposed, waiting for a person to accept or reject it.
+///
+/// Extraction cannot write `OrganizationFact` directly: there is one row per
+/// key, so a proposal would overwrite an answer the organization already gave.
+/// Staging them here is also what makes the confirmation queue possible —
+/// several documents can propose different values for the same key, and the
+/// person deciding needs to see them side by side with their sources.
+model FactCandidate {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documentId     String
+  document       Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  key   String
+  /// Never CONFIRMED — extraction proposes, a person confirms.
+  state FactState
+
+  valueText String @db.Text
+  /// Verbatim from the document. Checked against the source before the row is
+  /// written; a proposal that fails that check never gets here.
+  quote      String  @db.Text
+  page       Int?
+  confidence Float
+
+  status      CandidateStatus @default(PENDING)
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  /// What the person actually accepted, when they corrected the value.
+  acceptedValue String?       @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, status])
+  @@index([documentId])
+}
+
+enum CandidateStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
 model Document {
   id             String       @id @default(cuid())
   organizationId String
@@ -376,7 +420,8 @@ model Document {
   extractedAt     DateTime?
   extractionError String?   @db.Text
 
-  citations Citation[]
+  citations  Citation[]
+  candidates FactCandidate[]
 
   @@unique([organizationId, contentHash])
   @@index([organizationId, kind])

@@ -20,6 +20,7 @@ import { PrismaClient } from "@prisma/client";
  */
 const DIRECTLY_SCOPED = new Set([
   "OrganizationFact",
+  "FactCandidate",
   "Document",
   "Match",
 ]);
