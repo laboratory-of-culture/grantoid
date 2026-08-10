@@ -6,6 +6,7 @@ import {
   type FactDefinition,
 } from "../../../packages/schemas/fact-registry";
 import { LEGAL_FORM_LABEL_UK, type LegalForm } from "../../../packages/schemas/organization";
+import { formatOblast } from "../../../packages/schemas/place";
 import { pendingCandidates } from "../../../packages/db/confirmation";
 import { currentDb } from "../../lib/session";
 import { Documents } from "./documents";
@@ -108,7 +109,9 @@ export default async function ProfilePage() {
               {LEGAL_FORM_LABEL_UK[org.legalForm as LegalForm]}
             </span>
           ) : null}
-          {org.oblast ? <span className="tag tag-outline">{org.oblast} область</span> : null}
+          {formatOblast(org.oblast) ? (
+            <span className="tag tag-outline">{formatOblast(org.oblast)}</span>
+          ) : null}
           {org.edrpou ? <span className="mono">ЄДРПОУ {org.edrpou}</span> : null}
         </div>
 
