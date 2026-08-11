@@ -8,7 +8,36 @@
 
 import { describe, expect, it } from "vitest";
 
-import { looksLikeMachineNotation, meaningfulEntries } from "./index";
+import { looksLikeMachineNotation, meaningfulEntries, quoteIsInProfile } from "./index";
+
+describe("quoteIsInProfile", () => {
+  const profile = [
+    "Назва: ГО «Лабораторія культурних досліджень».",
+    "Неприбутковий статус: так. Підтверджено документом.",
+    "Сфери: культура; культурна спадщина; освіта. Зі слів організації.",
+  ].join("\n");
+
+  it("accepts a sentence copied from the profile", () => {
+    expect(quoteIsInProfile("Неприбутковий статус: так. Підтверджено документом.", profile)).toBe(
+      true,
+    );
+  });
+
+  it("tolerates differences in quote marks and spacing", () => {
+    expect(quoteIsInProfile("Сфери:  культура; культурна спадщина; освіта.", profile)).toBe(true);
+  });
+
+  it("rejects a fluent sentence the profile never said", () => {
+    // The dangerous case: nothing about it looks wrong.
+    expect(
+      quoteIsInProfile("Організація має підтверджений досвід міжнародних проєктів.", profile),
+    ).toBe(false);
+  });
+
+  it("rejects a fragment too short to be evidence", () => {
+    expect(quoteIsInProfile("культура", profile)).toBe(false);
+  });
+});
 
 describe("looksLikeMachineNotation", () => {
   // The profile used to be handed to the model as JSON, so its "verbatim quote

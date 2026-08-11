@@ -258,6 +258,31 @@ export function meaningfulEntries(values: readonly string[]): string[] {
  * costs nothing and a false negative puts unverifiable text on screen under the
  * word «цитата».
  */
+function normalizeForComparison(text: string): string {
+  return text
+    .replace(/[«»"'`‘’“”]/g, "")
+    .replace(/[–—-]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Is this quote actually in the profile it claims to come from?
+ *
+ * The same rule the extraction agent is held to, applied on the other side of
+ * the product. Catching machine notation was not enough: a model can equally
+ * produce a fluent, plausible Ukrainian sentence that the profile never said,
+ * and that is the more dangerous of the two because nothing about it looks
+ * wrong. An eligibility verdict whose profile citation cannot be found in the
+ * profile is a fabrication, however well it reads.
+ */
+export function quoteIsInProfile(quote: string, renderedProfile: string): boolean {
+  const needle = normalizeForComparison(quote);
+  if (needle.length < 12) return false;
+  return normalizeForComparison(renderedProfile).includes(needle);
+}
+
 export function looksLikeMachineNotation(quote: string): boolean {
   return (
     /\b(UNKNOWN|SELF_REPORTED|CONFIRMED|EXPLICIT_NEGATIVE)\b/.test(quote) ||
@@ -283,19 +308,29 @@ function applyEvidenceConstraints(
   const ruleByKey = new Map(grant.eligibility.map((r) => [r.key, r]));
   const factByKey = new Map(org.facts.map((f) => [f.key, f]));
   const corrections: Correction[] = [];
+  // The same text the model was given, so "is this quote in the profile" is
+  // asked against exactly what it read.
+  const profileText = renderProfile(org);
 
   const criteria = result.criteria.map((raw) => {
     let c = coherent(raw);
     const rule = ruleByKey.get(c.ruleKey);
     const factKey = rule?.resolvingFactKey ?? null;
 
-    // A profile quote that is really the system's own notation gets replaced
-    // with the sentence the profile actually supports, which we hold. Replacing
-    // beats discarding: the evidence exists, only the wording was wrong, and
-    // dropping it would turn a correct verdict into an UNCERTAIN.
-    if (c.profileQuote !== null && looksLikeMachineNotation(c.profileQuote)) {
+    // A profile quote is evidence only if it is in the profile. Two ways it can
+    // fail: the system's own notation copied back, or a fluent sentence the
+    // profile never said. The second is the dangerous one — nothing about it
+    // looks wrong. Either way the sentence the profile *does* support is
+    // substituted, because the evidence usually exists and only the wording was
+    // invented; dropping it would turn a correct verdict into an UNCERTAIN.
+    const unsupported =
+      c.profileQuote !== null &&
+      (looksLikeMachineNotation(c.profileQuote) || !quoteIsInProfile(c.profileQuote, profileText));
+
+    if (unsupported) {
       const fact = factKey ? factByKey.get(factKey) : undefined;
-      c = { ...c, profileQuote: fact ? factSentence(fact) : null };
+      const supported = fact && fact.state !== "UNKNOWN" ? factSentence(fact) : null;
+      c = { ...c, profileQuote: supported };
       if (c.profileQuote === null && c.verdict !== "UNCERTAIN") {
         // Nothing verifiable is left to stand on, and a definite verdict may not
         // rest on evidence a person cannot check.
