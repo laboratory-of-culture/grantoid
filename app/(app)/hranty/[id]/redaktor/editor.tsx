@@ -7,8 +7,10 @@ import type { ConceptView } from "../../../../../packages/db/concepts";
 import { SECTION_SOURCE_LABEL_UK } from "../../../../../packages/schemas/concept";
 import {
   approveSectionAction,
+  assistSectionAction,
   generateAction,
   saveSectionAction,
+  type AssistResult,
   type EditorResult,
 } from "./actions";
 
@@ -229,8 +231,111 @@ function SectionCard({
               Переписування замінить лише те, чого ви не редагували — ця секція збережеться.
             </p>
           ) : null}
+
+          <Assistant grantId={grantId} sectionKey={meta.key} />
         </>
       )}
     </article>
+  );
+}
+
+/**
+ * Ask for a change to this section.
+ *
+ * The suggestion is shown, never applied. Accepting goes through the same save
+ * path as typing, so a section revised by the assistant ends up marked as the
+ * person's — which is true, because they read it and chose it.
+ */
+function Assistant({ grantId, sectionKey }: { grantId: string; sectionKey: string }) {
+  const [state, ask, asking] = useActionState<AssistResult, FormData>(
+    assistSectionAction,
+    null,
+  );
+  const [, save, saving] = useActionState<EditorResult, FormData>(saveSectionAction, null);
+  const [dismissed, setDismissed] = useState(false);
+
+  const suggestion =
+    state && state.ok && state.sectionKey === sectionKey && !dismissed
+      ? state.suggestion
+      : null;
+
+  return (
+    <div className="stack">
+      <form action={ask} className="row">
+        <input type="hidden" name="grantId" value={grantId} />
+        <input type="hidden" name="sectionKey" value={sectionKey} />
+        <label className="field assistant-field">
+          <span className="field-label">Що змінити в цій секції?</span>
+          <input
+            className="input"
+            name="instruction"
+            placeholder="Скоротити вдвічі · додати про роботу з молоддю · простішою мовою"
+            maxLength={500}
+            required
+          />
+        </label>
+        <button type="submit" className="btn btn-ghost" disabled={asking}>
+          <Sparkles size={14} aria-hidden="true" />
+          {asking ? "Думаємо…" : "Запропонувати"}
+        </button>
+      </form>
+
+      {state && !state.ok ? (
+        <p className="field-error" role="alert">
+          {state.message}
+        </p>
+      ) : null}
+
+      {suggestion ? (
+        <div className="card stack">
+          <div className="row">
+            <span className="tag tag-state-unknown">Пропозиція AI</span>
+            {/* Measured, not claimed. The model's own account of what it did is
+                shown next to it and is not always true. */}
+            <span className="tag tag-outline">
+              {suggestion.lengthDeltaPct === 0
+                ? "обсяг той самий"
+                : suggestion.lengthDeltaPct < 0
+                  ? `коротше на ${Math.abs(suggestion.lengthDeltaPct)}%`
+                  : `довше на ${suggestion.lengthDeltaPct}%`}
+            </span>
+          </div>
+
+          {/* Labelled as the model's account rather than as fact. It routinely
+              describes edits it did not make — «прибрав другий абзац» on a
+              one-paragraph section — and a reader who takes it literally will
+              accept a revision they have not actually read. */}
+          <span className="kicker">як описує зміну сама модель</span>
+          <p className="card-body">{suggestion.changeNoteUk}</p>
+          <p className="field-hint">
+            Порівняйте з поточним текстом вище — опис не завжди точний.
+          </p>
+
+          {suggestion.unsupportedFigures.length > 0 ? (
+            <p className="field-error" role="alert">
+              Перевірте числа: {suggestion.unsupportedFigures.join(", ")} — їх немає в ваших
+              джерелах.
+            </p>
+          ) : null}
+
+          <p className="prose concept-text">{suggestion.content}</p>
+
+          <div className="card-meta">
+            <form action={save}>
+              <input type="hidden" name="grantId" value={grantId} />
+              <input type="hidden" name="sectionKey" value={sectionKey} />
+              <input type="hidden" name="content" value={suggestion.content} />
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                <Check size={14} aria-hidden="true" />
+                {saving ? "Зберігаємо…" : "Прийняти"}
+              </button>
+            </form>
+            <button type="button" className="btn btn-ghost" onClick={() => setDismissed(true)}>
+              Відхилити
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }

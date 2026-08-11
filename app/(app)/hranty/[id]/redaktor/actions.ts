@@ -7,6 +7,8 @@ import {
   approveSection,
   editSection,
   generateDraft,
+  suggestSectionRevision,
+  type SuggestionView,
 } from "../../../../../packages/db/concepts";
 import {
   UploadRejected,
@@ -16,6 +18,46 @@ import {
 import { requireDb } from "../../../../lib/session";
 
 export type EditorResult = { ok: false; message: string } | { ok: true } | null;
+
+export type AssistResult =
+  | { ok: false; message: string }
+  | { ok: true; sectionKey: string; suggestion: SuggestionView }
+  | null;
+
+/**
+ * Ask for a revision. Saves nothing.
+ *
+ * The suggestion comes back to the screen and stays there until a person
+ * accepts it, which routes through `saveSectionAction` and marks the section as
+ * theirs. Writing straight to the draft would leave text a model produced,
+ * sitting in a section labelled as read by a human.
+ */
+export async function assistSectionAction(
+  _prev: AssistResult,
+  form: FormData,
+): Promise<AssistResult> {
+  const { organizationId } = await requireDb();
+  const grantId = String(form.get("grantId") ?? "");
+  const sectionKey = String(form.get("sectionKey") ?? "");
+  const instruction = String(form.get("instruction") ?? "");
+
+  try {
+    const suggestion = await suggestSectionRevision(
+      organizationId,
+      grantId,
+      sectionKey,
+      instruction,
+    );
+    return { ok: true, sectionKey, suggestion };
+  } catch (err) {
+    if (err instanceof ConceptGenerationFailed) return { ok: false, message: err.message };
+    console.error("assistant failed", err);
+    return {
+      ok: false,
+      message: "Не вдалося отримати пропозицію. Перевірте, чи запущено локальну модель.",
+    };
+  }
+}
 
 /**
  * Every action re-resolves the organization from the session rather than

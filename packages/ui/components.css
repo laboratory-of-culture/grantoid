@@ -617,6 +617,13 @@ body {
   white-space: pre-wrap;
 }
 
+/* The assistant's instruction box takes the width the row leaves it, so the
+ * button stays beside it rather than wrapping under on a narrow screen. */
+.assistant-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 /* ------------------------------------------------------------------ media */
 
 /* Photographs are grayscale, never tinted. */

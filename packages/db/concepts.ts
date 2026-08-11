@@ -12,6 +12,7 @@
  */
 
 import { generateConcept } from "../../agents/concept";
+import { MAX_INSTRUCTION_CHARS, suggestRevision } from "../../agents/assistant";
 import { donorMaterial } from "./donor-docs";
 import { forOrganization, prisma } from "./tenancy";
 import {
@@ -236,6 +237,121 @@ export async function generateDraft(
   const view = await loadConcept(organizationId, grantId);
   if (!view) throw new ConceptGenerationFailed("чернетку не збережено");
   return view;
+}
+
+export type SuggestionView = {
+  content: string;
+  changeNoteUk: string;
+  /** Figures in the suggestion that no source supports. Same guard as a draft. */
+  unsupportedFigures: string[];
+  /**
+   * How much shorter or longer the suggestion is, as a percentage.
+   *
+   * An objective fact shown beside the model's own description of what it did,
+   * because that description is not reliable: asked to halve a section, the
+   * first live run returned the text unchanged and reported «скоротив удвічі,
+   * прибрав повтор про фестивалі» — a section that never mentioned фестивалі.
+   * A reader can check a number against the text in front of them.
+   */
+  lengthDeltaPct: number;
+};
+
+/** Whitespace and case are not a revision. */
+function sameText(a: string, b: string): boolean {
+  const norm = (t: string) => t.replace(/\s+/g, " ").trim().toLowerCase();
+  return norm(a) === norm(b);
+}
+
+/**
+ * Ask the assistant to revise one section.
+ *
+ * Returns the suggestion; saves nothing. Accepting is a separate act by a
+ * person, and routing it through `editSection` is what marks the result as
+ * human-reviewed. An assistant that wrote directly would leave a section that
+ * had been rewritten by a model sitting there labelled as read.
+ */
+export async function suggestSectionRevision(
+  organizationId: string,
+  grantId: string,
+  key: string,
+  instruction: string,
+): Promise<SuggestionView> {
+  const trimmed = instruction.trim();
+  if (trimmed.length === 0) {
+    throw new ConceptGenerationFailed("Напишіть, що саме змінити в цій секції.");
+  }
+  if (trimmed.length > MAX_INSTRUCTION_CHARS) {
+    throw new ConceptGenerationFailed(
+      `Забагато тексту для інструкції (${trimmed.length} символів). Опишіть коротше, що змінити.`,
+    );
+  }
+
+  const db = forOrganization(organizationId);
+  const draft = await db.conceptDraft.findFirst({
+    where: { grantId },
+    include: { sections: true },
+  });
+  const section = draft?.sections.find((s) => s.key === key);
+  if (!draft || !section) {
+    throw new ConceptGenerationFailed("Цієї секції ще немає — спершу створіть чернетку.");
+  }
+
+  const [orgRow, grantRow, donor] = await Promise.all([
+    prisma.organization.findUniqueOrThrow({
+      where: { id: organizationId },
+      include: { facts: { include: { citations: true } } },
+    }),
+    prisma.grant.findUniqueOrThrow({
+      where: { id: grantId },
+      include: { rules: { include: { citations: true } } },
+    }),
+    donorMaterial(organizationId, grantId),
+  ]);
+
+  const profile = toProfile(orgRow);
+  const grant = toGrant(grantRow);
+
+  const run = await suggestRevision({
+    org: profile,
+    grant,
+    sectionKey: key,
+    current: section.content,
+    instruction: trimmed,
+    donorText: donor.text,
+    edited: section.source !== "AI_DRAFT",
+  });
+
+  if (!run.suggestion) {
+    throw new ConceptGenerationFailed(
+      run.error ?? "Не вдалося отримати пропозицію. Спробуйте ще раз.",
+    );
+  }
+
+  // A suggestion identical to the text it replaces is not a suggestion, and
+  // offering it alongside a confident description of what changed is worse than
+  // offering nothing: it teaches a grant manager that the change notes are
+  // fiction, and after that they stop reading them on the revisions that are
+  // real.
+  if (sameText(run.suggestion.content, section.content)) {
+    throw new ConceptGenerationFailed(
+      "Модель не змінила текст. Спробуйте сформулювати конкретніше — наприклад, " +
+        "«прибрати другий абзац» або «додати, що працюємо з сільськими громадами».",
+    );
+  }
+
+  const before = section.content.trim().length;
+  const after = run.suggestion.content.trim().length;
+
+  return {
+    content: run.suggestion.content,
+    changeNoteUk: run.suggestion.changeNoteUk,
+    unsupportedFigures: unsupportedNumbers(run.suggestion.content, [
+      renderProfileText(profile),
+      JSON.stringify(grant),
+      donor.text,
+    ]),
+    lengthDeltaPct: before === 0 ? 0 : Math.round(((after - before) / before) * 100),
+  };
 }
 
 /** A person rewrote a section. That is what takes it out of AI_DRAFT. */

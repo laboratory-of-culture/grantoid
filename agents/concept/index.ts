@@ -112,11 +112,24 @@ export function userPrompt(
   org: OrganizationProfile,
   grant: Grant,
   sections: readonly SectionDefinition[],
+  donorText = "",
 ): string {
   return [
     "# Конкурс",
     renderCall(grant),
     "",
+    // The donor's own guidelines, when the organization has supplied them. They
+    // outrank the announcement: the announcement is a notice about the call and
+    // this is the call. Placed after it so a contradiction is read in that
+    // order.
+    ...(donorText.trim().length > 0
+      ? [
+          "# Документи донора (завантажені організацією)",
+          "Це повні умови конкурсу. Де вони суперечать оголошенню вище, правильні саме вони.",
+          donorText,
+          "",
+        ]
+      : []),
     "# Профіль організації",
     renderProfileText(org),
     "",
@@ -140,6 +153,7 @@ export async function generateConcept(
   org: OrganizationProfile,
   grant: Grant,
   keys: readonly string[] = CONCEPT_SECTIONS.map((s) => s.key),
+  donorText = "",
   opts: CompleteOptions = {},
 ): Promise<ConceptRun> {
   const sections = CONCEPT_SECTIONS.filter((s) => keys.includes(s.key));
@@ -153,7 +167,7 @@ export async function generateConcept(
 
   const completion = await complete(
     systemPrompt(),
-    userPrompt(org, grant, sections),
+    userPrompt(org, grant, sections, donorText),
     ConceptDraftShape,
     options,
   );
