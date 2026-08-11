@@ -87,12 +87,46 @@ Ordered. `M2-1` is first because everything after it is shown to someone.
 | M2-9 | Email notifications | Digest of new matches; unsubscribe; nothing sent without a verdict and its reason | Weekly only, no per-grant alerts |
 | M2-10 | Deploy + privacy policy | D1's promise — documents never leave our infrastructure — written into the policy in the same words | — |
 
-Explicitly **not** in milestone 2: the concept generator, the application
-workspace with its AI reviewer, and the donor requirement checklist. Those are
-three separate features from the brief, they each need their own agent and eval
-fixtures, and none of them is worth starting before an NGO has told us whether
-the feed finds it anything worth applying for. `M2-7` exists because they are
-currently in the navigation and lead nowhere.
+## Revision: the three sections become one editor
+
+The original plan carried «Концепції», «Заявки» and «Вимоги донора» as three
+top-level sections, deferred out of this milestone. That structure was wrong,
+and greying them out in `M2-7` only made it visible.
+
+None of that work exists in general. You do not write a concept in general — you
+write it for one call, against its conditions, before its deadline. As separate
+destinations each would have opened on an empty list asking the user to choose a
+grant: the screen they had just come from. Three sections, three empty states,
+one real action between them.
+
+So they collapse into a **grant editor**, reached from a chosen opportunity, and
+that editor is the remaining scope of the beta:
+
+- a concept note generated from the profile and this call, section by section;
+- editing, with every untouched section labelled as an AI draft;
+- an assistant that improves one section on request rather than rewriting the
+  document;
+- upload of the donor's own PDFs and documents for this call, which is where the
+  conditions that the announcement omits actually live.
+
+That last point closes the gap ingestion cannot: an aggregator announcement gives
+`extractionConfidence` around 0.6, and the missing 0.4 is in a PDF on the donor's
+site. Nobody should read it speculatively for every call — but the moment an
+organization decides to apply, it is exactly the right time to ask for it.
+
+| # | Task | Done when | State |
+|---|---|---|---|
+| M2-11 | Data model for the editor | `ConceptDraft` / `ConceptSection`, donor documents linked to a grant | done |
+| M2-12 | Concept section registry | Eight sections as data, with per-section guidance | done |
+| M2-13 | Concept generator agent | Draft from profile + call; nothing invented that neither supplies | |
+| M2-14 | Editor screen | Generate, edit, approve per section; AI drafts labelled everywhere | |
+| M2-15 | Donor documents in the editor | Upload against the grant, not the profile; conditions extracted from them | |
+| M2-16 | Assistant | Improves one section on instruction, shows what it changed | |
+
+Explicitly **not** in the beta: the readiness score and the eight review
+dimensions, submission tracking, and anything that exports a document to a
+donor. Export in particular waits until `human-in-the-loop` has somewhere to
+enforce its rule, which is `M2-14`.
 
 ## Debts carried from milestone 1
 

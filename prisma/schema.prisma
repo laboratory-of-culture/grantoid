@@ -284,6 +284,9 @@ model Grant {
   chunks    GrantChunk[]
   snapshots GrantSnapshot[]
   matches   Match[]
+  concepts  ConceptDraft[]
+  /// Donor material an organization uploaded against this call.
+  documents Document[]
 
   @@unique([sourceId, externalKey])
   @@index([status, deadline])
@@ -384,6 +387,7 @@ model Organization {
   matches     Match[]
   candidates  FactCandidate[]
   memberships Membership[]
+  concepts    ConceptDraft[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -586,11 +590,22 @@ model Document {
   extractedAt     DateTime?
   extractionError String?   @db.Text
 
+  /// Which call this document belongs to, when it is the donor's own material
+  /// rather than the organization's.
+  ///
+  /// Nullable because most documents describe the organization and apply to
+  /// every call it works on; guidelines describe one call and must not leak
+  /// into the profile knowledge base, which is why the extractor branches on
+  /// this rather than on `kind` alone.
+  grantId String?
+  grant   Grant?  @relation(fields: [grantId], references: [id], onDelete: SetNull)
+
   citations  Citation[]
   candidates FactCandidate[]
 
   @@unique([organizationId, contentHash])
   @@index([organizationId, kind])
+  @@index([grantId])
 }
 
 // ---------------------------------------------------------------------------
@@ -662,4 +677,83 @@ model CriterionAssessment {
   resolvingFactKey String?
 
   @@index([matchId])
+}
+
+// ---------------------------------------------------------------------------
+// The grant editor
+// ---------------------------------------------------------------------------
+
+/// One concept note being written against one call.
+///
+/// Keyed on the pair, not on the grant alone: two organizations working on the
+/// same call are writing two unrelated documents, and the tenancy layer scopes
+/// this the same way it scopes a profile fact.
+///
+/// There is no `content` column. A concept is written and reviewed section by
+/// section, and a single blob would lose which parts a person has actually read
+/// — which is the distinction `human-in-the-loop` exists to keep.
+model ConceptDraft {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  grantId        String
+  grant          Grant        @relation(fields: [grantId], references: [id], onDelete: Cascade)
+
+  title  String
+  status DraftStatus @default(DRAFT)
+
+  /// The model and prompt that produced the current generation, so a draft can
+  /// be told apart from one written under a different prompt.
+  modelTag          String?
+  promptFingerprint String?
+
+  sections  ConceptSection[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([organizationId, grantId])
+  @@index([organizationId, status])
+}
+
+enum DraftStatus {
+  DRAFT
+  /// Every section has been read by a person. Nothing may be exported before.
+  REVIEWED
+}
+
+/// One section of a concept note.
+///
+/// `source` is the whole point of the row existing separately. An AI-written
+/// section that nobody has touched must be labelled as such wherever it is
+/// shown, and must not reach a donor — a person editing it is what changes
+/// that, so the transition is recorded rather than inferred.
+model ConceptSection {
+  id      String       @id @default(cuid())
+  draftId String
+  draft   ConceptDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  /// Stable slug from the section registry in packages/schemas.
+  key        String
+  orderIndex Int    @default(0)
+
+  content String @db.Text
+  source  SectionSource @default(AI_DRAFT)
+
+  /// Set when a person last changed the text. Null means nobody has.
+  editedAt     DateTime?
+  editedByUserId String?
+  /// Set when a person marked the section as read and correct.
+  approvedAt   DateTime?
+
+  @@unique([draftId, key])
+  @@index([draftId, orderIndex])
+}
+
+enum SectionSource {
+  /// Written by a model, untouched. Labelled everywhere it appears.
+  AI_DRAFT
+  /// A model draft a person has since edited.
+  HUMAN_EDITED
+  /// Written by a person from scratch.
+  HUMAN
 }

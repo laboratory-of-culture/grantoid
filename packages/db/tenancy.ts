@@ -24,6 +24,7 @@ const DIRECTLY_SCOPED = new Set([
   "Document",
   "Match",
   "AuditEntry",
+  "ConceptDraft",
 ]);
 
 /**
@@ -34,6 +35,7 @@ const DIRECTLY_SCOPED = new Set([
 const SCOPED_VIA_PARENT = new Set([
   "CriterionAssessment", // via Match
   "Citation", // via Document / OrganizationFact
+  "ConceptSection", // via ConceptDraft
 ]);
 
 /** Models with no tenant dimension. Grant data is public — see the skill. */

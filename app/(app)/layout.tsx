@@ -1,12 +1,5 @@
 import Link from "next/link";
-import {
-  Building2,
-  FileText,
-  Lightbulb,
-  ListChecks,
-  LogOut,
-  Search,
-} from "lucide-react";
+import { Building2, LogOut, Search } from "lucide-react";
 
 import { BetaBanner } from "../components/beta";
 import { requireDb } from "../lib/session";
@@ -18,19 +11,20 @@ import { signOutAction } from "../(auth)/actions";
  * manager can read is part of that.
  */
 /**
- * `ready` is what stops the menu lying.
+ * Two entries, and that is the whole product.
  *
- * Four of these five routes do not exist yet, and until now clicking them gave
- * a 404 — which during trial operation reads as a broken product rather than an
- * unfinished one. They stay visible, because someone deciding whether this tool
- * is worth their time should see where it is going, but they are not links.
+ * There used to be five. «Концепції», «Заявки» and «Вимоги донора» were three
+ * top-level sections for work that only ever makes sense against one specific
+ * call — you do not write a concept in general, you write it for a deadline. As
+ * separate destinations they would each have opened on an empty list asking the
+ * user to pick a grant, which is the screen they had just come from.
+ *
+ * That work now lives in the grant editor, reached from an opportunity, where
+ * the call's own conditions are already on screen.
  */
 const NAV: { href: string; label: string; Icon: typeof Building2; ready: boolean }[] = [
   { href: "/profil", label: "Профіль організації", Icon: Building2, ready: true },
   { href: "/mozhlyvosti", label: "Можливості", Icon: Search, ready: true },
-  { href: "/kontseptsii", label: "Концепції", Icon: Lightbulb, ready: false },
-  { href: "/zayavky", label: "Заявки", Icon: FileText, ready: false },
-  { href: "/vymohy", label: "Вимоги донора", Icon: ListChecks, ready: false },
 ];
 // "Джерела" is deliberately absent: the source registry is operator tooling,
 // not something an NGO manages, and a nav item that redirects on click is worse
