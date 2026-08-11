@@ -8,6 +8,11 @@ import {
   editSection,
   generateDraft,
 } from "../../../../../packages/db/concepts";
+import {
+  UploadRejected,
+  deleteDocument,
+  uploadDocument,
+} from "../../../../../packages/db/documents";
 import { requireDb } from "../../../../lib/session";
 
 export type EditorResult = { ok: false; message: string } | { ok: true } | null;
@@ -55,6 +60,64 @@ export async function saveSectionAction(
   } catch (err) {
     if (err instanceof ConceptGenerationFailed) return { ok: false, message: err.message };
     throw err;
+  }
+
+  revalidatePath(`/hranty/${grantId}/redaktor`);
+  return { ok: true };
+}
+
+/**
+ * Upload the donor's own material for this call.
+ *
+ * Always `CALL_GUIDELINES` and always carrying the grant id: that pair is what
+ * keeps it out of the profile knowledge base. A donor's co-financing rule filed
+ * as a fact about the organization would be a corruption nothing downstream
+ * could detect.
+ */
+export async function uploadDonorDocAction(
+  _prev: EditorResult,
+  form: FormData,
+): Promise<EditorResult> {
+  const { db, organizationId } = await requireDb();
+  const grantId = String(form.get("grantId") ?? "");
+  const file = form.get("file");
+
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, message: "Виберіть файл, щоб завантажити." };
+  }
+
+  try {
+    await uploadDocument(db, {
+      organizationId,
+      grantId,
+      filename: file.name,
+      mimeType: file.type,
+      kind: "CALL_GUIDELINES",
+      bytes: new Uint8Array(await file.arrayBuffer()),
+    });
+  } catch (err) {
+    if (err instanceof UploadRejected) return { ok: false, message: err.message };
+    console.error("donor upload failed", err);
+    return { ok: false, message: "Не вдалося зберегти файл. Спробуйте ще раз за хвилину." };
+  }
+
+  revalidatePath(`/hranty/${grantId}/redaktor`);
+  return { ok: true };
+}
+
+export async function deleteDonorDocAction(
+  _prev: EditorResult,
+  form: FormData,
+): Promise<EditorResult> {
+  const { db } = await requireDb();
+  const grantId = String(form.get("grantId") ?? "");
+  const documentId = String(form.get("documentId") ?? "");
+
+  try {
+    await deleteDocument(db, documentId);
+  } catch (err) {
+    console.error("donor delete failed", err);
+    return { ok: false, message: "Не вдалося видалити документ." };
   }
 
   revalidatePath(`/hranty/${grantId}/redaktor`);

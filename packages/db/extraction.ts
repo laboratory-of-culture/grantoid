@@ -41,6 +41,16 @@ export async function extractDocumentFacts(
     throw new ExtractionFailed("Документ не належить цій організації.");
   }
 
+  // A donor's guidelines describe a call, not this organization. Reading facts
+  // out of them would file another grant's co-financing rule as a property of
+  // the NGO — a quiet corruption of the knowledge base that nothing downstream
+  // could detect, since the fact would look as well-sourced as any other.
+  if (doc.grantId !== null) {
+    throw new ExtractionFailed(
+      "Це документ донора, а не документ вашої організації. З нього не витягуються факти профілю.",
+    );
+  }
+
   const bytes = await documentStore().get(doc.storageKey);
   const { text, pageCount, emptyReason } = await extractText(doc.mimeType, bytes);
 

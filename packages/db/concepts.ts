@@ -12,6 +12,7 @@
  */
 
 import { generateConcept } from "../../agents/concept";
+import { donorMaterial } from "./donor-docs";
 import { forOrganization, prisma } from "./tenancy";
 import {
   CONCEPT_SECTIONS,
@@ -74,9 +75,13 @@ export async function loadConcept(
     }),
   ]);
 
+  // Donor documents count as a source: a figure the guidelines state is
+  // supported, and flagging it would train people to click past the warning.
+  const donor = await donorMaterial(organizationId, grantId);
   const sources = [
     renderProfileText(toProfile(orgRow)),
     JSON.stringify(toGrant(grantRow)),
+    donor.text,
   ];
 
   return {
@@ -148,7 +153,17 @@ export async function generateDraft(
     return view;
   }
 
-  const run = await generateConcept(toProfile(orgRow), toGrant(grantRow), wanted);
+  // The donor's own documents, when the organization has uploaded any. Without
+  // them the generator writes against a notice about the call; with them it
+  // writes against the call.
+  const donor = await donorMaterial(organizationId, grantId);
+
+  const run = await generateConcept(
+    toProfile(orgRow),
+    toGrant(grantRow),
+    wanted,
+    donor.text,
+  );
   if (!run.result) {
     throw new ConceptGenerationFailed(
       run.error ?? "модель не повернула чернетку. Спробуйте ще раз.",

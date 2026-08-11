@@ -38,6 +38,16 @@ export type UploadInput = {
   mimeType: string;
   kind: DocumentKind;
   bytes: Uint8Array;
+  /**
+   * Set when this is the donor's material for one call rather than the
+   * organization's own.
+   *
+   * Donor guidelines describe a call, not an organization, and must never reach
+   * the profile knowledge base — a co-financing rule from someone else's grant
+   * becoming a fact about your NGO would be a quiet, durable corruption. The
+   * fact extractor filters on this.
+   */
+  grantId?: string | null;
 };
 
 /**
@@ -84,6 +94,7 @@ export async function uploadDocument(
     mimeType: input.mimeType,
     sizeBytes: stored.sizeBytes,
     contentHash: hash,
+    grantId: input.grantId ?? null,
   } as Prisma.DocumentUncheckedCreateInput;
 
   return db.document.create({ data });

@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, CalendarClock } from "lucide-react";
 
 import { loadConcept } from "../../../../../packages/db/concepts";
+import { listDonorDocuments } from "../../../../../packages/db/donor-docs";
+import { DonorDocuments } from "./donor-docs";
 import { loadMatch } from "../../../../../packages/matching/feed";
 import { CONCEPT_SECTIONS } from "../../../../../packages/schemas/concept";
 import { AiNotice } from "../../../../components/beta";
@@ -30,7 +32,10 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
   const entry = await loadMatch(organizationId, id);
   if (!entry) notFound();
 
-  const concept = await loadConcept(organizationId, id);
+  const [concept, donorDocs] = await Promise.all([
+    loadConcept(organizationId, id),
+    listDonorDocuments(organizationId, id),
+  ]);
 
   return (
     <div className="stack">
@@ -78,6 +83,12 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
           </p>
         ) : null}
       </details>
+
+      <DonorDocuments
+        grantId={id}
+        documents={donorDocs}
+        extractionConfidence={entry.extractionConfidence}
+      />
 
       <ConceptEditor
         grantId={id}
