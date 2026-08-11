@@ -69,10 +69,12 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
             </li>
           ))}
         </ul>
-        {entry.extractionNotes ? (
+        {/* A fixture states everything by construction, so the warning would be
+            false. Live announcements never reach 1.0 — the ceiling is 0.75. */}
+        {entry.extractionConfidence < 1 ? (
           <p className="prose muted">
             Це не повні умови: прочитано {Math.round(entry.extractionConfidence * 100)}% з
-            оголошення. Завантажте документи донора, щоб доповнити.
+            оголошення. Решта — в документах донора.
           </p>
         ) : null}
       </details>
