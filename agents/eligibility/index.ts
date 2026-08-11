@@ -23,9 +23,10 @@ import {
   type Assessed,
 } from "../../packages/schemas/ladder";
 import { MatchResult, MatchResultShape } from "../../packages/schemas/match";
+import { factDefinition } from "../../packages/schemas/fact-registry";
 import type { Grant } from "../../packages/schemas/grant";
-import type { OrganizationProfile } from "../../packages/schemas/organization";
-import type { Verdict } from "../../packages/schemas/verdict";
+import { LEGAL_FORM_LABEL_UK, type OrganizationProfile } from "../../packages/schemas/organization";
+import type { FactState, Verdict } from "../../packages/schemas/verdict";
 
 export const TOOLS: readonly string[] = [];
 
@@ -57,29 +58,76 @@ function render(value: unknown): string {
   return JSON.stringify(pruned, null, 2);
 }
 
+const STATE_SUFFIX_UK: Record<FactState, string> = {
+  CONFIRMED: "Підтверджено документом.",
+  SELF_REPORTED: "Зі слів організації, без документа.",
+  EXPLICIT_NEGATIVE: "Організація підтвердила, що цього немає.",
+  UNKNOWN: "",
+};
+
+function factValueUk(fact: OrganizationProfile["facts"][number]): string | null {
+  if (fact.valueList !== null && fact.valueList.length > 0) return fact.valueList.join("; ");
+  if (fact.valueText !== null) return fact.valueText;
+  if (fact.valueNumber !== null) return String(fact.valueNumber);
+  if (fact.valueBoolean !== null) return fact.valueBoolean ? "так" : "ні";
+  return null;
+}
+
 /**
- * Only the facts the model needs, in a shape that puts the state first.
+ * One profile fact as a sentence a person can check.
  *
- * The full profile carries eighteen rows, most of them UNKNOWN and empty. Sent
- * verbatim they bury the handful that decide the verdict, and on a 4B model that
- * matters more than it would on a larger one.
+ * This is the text the model is asked to quote from, and therefore the text
+ * that ends up under «з профілю організації» on the match breakdown. It used to
+ * be JSON — so the model dutifully quoted
+ * `non_profit_status: CONFIRMED (true), legal_form: CONFIRMED (…)` and the
+ * screen presented the system's own notation as evidence. A citation nobody can
+ * verify against something they recognise is not a citation, which is the exact
+ * failure this product exists to prevent, appearing in the product itself.
+ */
+export function factSentence(fact: OrganizationProfile["facts"][number]): string {
+  const def = factDefinition(fact.key);
+  const label = def?.labelUk ?? fact.key;
+
+  if (fact.state === "UNKNOWN") {
+    return `${label}: організація не відповідала на це питання.`;
+  }
+
+  const value = factValueUk(fact);
+  const suffix = STATE_SUFFIX_UK[fact.state];
+
+  if (fact.state === "EXPLICIT_NEGATIVE") {
+    return `${label}: ${value ?? "ні"}. ${suffix}`;
+  }
+  return `${label}: ${value ?? "—"}. ${suffix}`;
+}
+
+/**
+ * The profile as prose.
+ *
+ * Answered facts first: eighteen rows, most of them unanswered, bury the handful
+ * that decide the verdict, and on a 4B model that matters more than it would on
+ * a larger one. The unanswered ones still appear, because the whole ladder turns
+ * on the model seeing that a question was never asked rather than inferring it
+ * from a gap.
  */
 function renderProfile(org: OrganizationProfile): string {
-  const facts = org.facts.map((f) => ({
-    key: f.key,
-    state: f.state,
-    value: f.valueList ?? f.valueText ?? f.valueNumber ?? f.valueBoolean ?? undefined,
-  }));
+  const answered = org.facts.filter((f) => f.state !== "UNKNOWN");
+  const unanswered = org.facts.filter((f) => f.state === "UNKNOWN");
 
-  return render({
-    id: org.id,
-    name: org.name,
-    legalForm: org.legalForm,
-    oblast: org.oblast,
-    city: org.city,
-    mission: org.mission,
-    facts,
-  });
+  const lines = [
+    `Назва: ${org.name}.`,
+    org.legalForm ? `Правова форма: ${LEGAL_FORM_LABEL_UK[org.legalForm]}.` : null,
+    org.oblast ? `Область: ${org.oblast}.` : null,
+    org.city ? `Місто: ${org.city}.` : null,
+    "",
+    "## Що організація про себе повідомила",
+    ...answered.map((f) => factSentence(f)),
+    "",
+    "## Питання, на які організація не відповідала",
+    ...unanswered.map((f) => factSentence(f)),
+  ].filter((l) => l !== null);
+
+  return lines.join("\n");
 }
 
 function renderGrant(grant: Grant): string {
@@ -202,6 +250,22 @@ export function meaningfulEntries(values: readonly string[]): string[] {
   return out;
 }
 
+/**
+ * Does this "quote" look like the system talking to itself?
+ *
+ * Matches the notation the profile used to be rendered in — a fact key, a state
+ * enum, sometimes a JSON array. Prose never looks like this, so a false positive
+ * costs nothing and a false negative puts unverifiable text on screen under the
+ * word «цитата».
+ */
+export function looksLikeMachineNotation(quote: string): boolean {
+  return (
+    /\b(UNKNOWN|SELF_REPORTED|CONFIRMED|EXPLICIT_NEGATIVE)\b/.test(quote) ||
+    /^[a-z][a-z0-9_]{3,}\s*:/.test(quote.trim()) ||
+    /\[['"]/.test(quote)
+  );
+}
+
 function coherent(c: MatchResult["criteria"][number]): MatchResult["criteria"][number] {
   if (c.verdict === "UNCERTAIN") return c;
   if (c.uncertaintyReason === null && c.missingInformation === null) return c;
@@ -221,9 +285,30 @@ function applyEvidenceConstraints(
   const corrections: Correction[] = [];
 
   const criteria = result.criteria.map((raw) => {
-    const c = coherent(raw);
+    let c = coherent(raw);
     const rule = ruleByKey.get(c.ruleKey);
     const factKey = rule?.resolvingFactKey ?? null;
+
+    // A profile quote that is really the system's own notation gets replaced
+    // with the sentence the profile actually supports, which we hold. Replacing
+    // beats discarding: the evidence exists, only the wording was wrong, and
+    // dropping it would turn a correct verdict into an UNCERTAIN.
+    if (c.profileQuote !== null && looksLikeMachineNotation(c.profileQuote)) {
+      const fact = factKey ? factByKey.get(factKey) : undefined;
+      c = { ...c, profileQuote: fact ? factSentence(fact) : null };
+      if (c.profileQuote === null && c.verdict !== "UNCERTAIN") {
+        // Nothing verifiable is left to stand on, and a definite verdict may not
+        // rest on evidence a person cannot check.
+        c = {
+          ...c,
+          verdict: "UNCERTAIN",
+          uncertaintyReason: "CONFLICTING_EVIDENCE",
+          missingInformation:
+            c.missingInformation ?? "Не вдалося підтвердити цей висновок цитатою з профілю.",
+        };
+      }
+    }
+
     // No single fact resolves this rule — it is judged from the profile as a
     // whole, where inference is legitimate. Leave it alone.
     if (!factKey) return c;

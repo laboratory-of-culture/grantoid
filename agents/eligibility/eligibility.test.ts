@@ -8,7 +8,36 @@
 
 import { describe, expect, it } from "vitest";
 
-import { meaningfulEntries } from "./index";
+import { looksLikeMachineNotation, meaningfulEntries } from "./index";
+
+describe("looksLikeMachineNotation", () => {
+  // The profile used to be handed to the model as JSON, so its "verbatim quote
+  // from the profile" was JSON — and the breakdown printed the system's own
+  // notation under «з профілю організації».
+  it("catches a fact-state dump", () => {
+    expect(
+      looksLikeMachineNotation(
+        "non_profit_status: CONFIRMED (true), legal_form: CONFIRMED (Громадська організація (ГО))",
+      ),
+    ).toBe(true);
+  });
+
+  it("catches a bare key prefix and a JSON array", () => {
+    expect(looksLikeMachineNotation("sectors: SELF_REPORTED (['культура', ...])")).toBe(true);
+    expect(looksLikeMachineNotation("activity_areas: дослідження спадщини")).toBe(true);
+  });
+
+  it("leaves a real profile sentence alone", () => {
+    expect(
+      looksLikeMachineNotation(
+        "Неприбутковий статус: так. Підтверджено документом.",
+      ),
+    ).toBe(false);
+    expect(
+      looksLikeMachineNotation("Сфери: культура; культурна спадщина. Зі слів організації."),
+    ).toBe(false);
+  });
+});
 
 describe("meaningfulEntries", () => {
   it("drops prose that describes the empty set", () => {

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CalendarClock, CircleHelp, TriangleAlert } from "lucide-react";
 
 import { loadFeed, type FeedEntry } from "../../../packages/matching/feed";
-import { BUCKET_LABEL_UK, VERDICT_LABEL_UK } from "../../../packages/schemas/verdict";
+import { VERDICT_LABEL_UK } from "../../../packages/schemas/verdict";
 import { AiNotice } from "../../components/beta";
 import { requireDb } from "../../lib/session";
 
@@ -38,26 +38,8 @@ export default async function FeedPage() {
 
       {feed.entries.length > 0 ? (
         <>
-          <p className="prose muted">
-            Кожен грант оцінено за умовами, які вдалося прочитати в оголошенні. Жоден висновок
-            не є остаточним: система не читає PDF донора, тому перед подачею відкривайте
-            оригінал.
-          </p>
-
           <div className="row">
-            <span className="tag tag-state-matched">
-              {BUCKET_LABEL_UK.MATCHED}: {feed.byBucket.MATCHED}
-            </span>
-            <span className="tag tag-state-problem">
-              {BUCKET_LABEL_UK.POTENTIAL_PROBLEM}: {feed.byBucket.POTENTIAL_PROBLEM}
-            </span>
-            <span className="tag tag-state-unknown">
-              {BUCKET_LABEL_UK.UNKNOWN}: {feed.byBucket.UNKNOWN}
-            </span>
-            <span className="tag tag-state-blocked">
-              {BUCKET_LABEL_UK.NOT_MATCHED}: {feed.byBucket.NOT_MATCHED}
-            </span>
-            <AiNotice />
+            <AiNotice detail="розбір за критеріями — усередині" />
           </div>
 
           <div className="stack">
@@ -99,11 +81,24 @@ function EmptyFeed() {
   );
 }
 
+/**
+ * One row.
+ *
+ * An earlier version carried seven blocks: verdict, donor, deadline, title,
+ * summary, a score with four bucket counts, a blocker line, an action and an
+ * extraction percentage. Every one of them was defensible on its own and
+ * together they were unreadable — in a list, a reader scans for the one thing
+ * that decides whether to open it, and eight competing signals mean scanning
+ * fails and the summary gets skipped along with everything else.
+ *
+ * What survives is what a decision to open actually rests on: is it worth my
+ * time, when does it close, and what is the one thing standing in the way. The
+ * full breakdown, the per-bucket counts and how much of the call was read all
+ * live one click away, on the screen built to hold them.
+ */
 function FeedRow({ entry }: { entry: FeedEntry }) {
-  const blocked = entry.criteria.filter((c) => c.bucket === "NOT_MATCHED").length;
-  const problems = entry.criteria.filter((c) => c.bucket === "POTENTIAL_PROBLEM").length;
   const unknown = entry.criteria.filter((c) => c.bucket === "UNKNOWN").length;
-  const matched = entry.criteria.filter((c) => c.bucket === "MATCHED").length;
+  const blocker = entry.blockers[0] ?? null;
 
   return (
     <article className="card stack">
@@ -111,7 +106,7 @@ function FeedRow({ entry }: { entry: FeedEntry }) {
         <span className={`tag ${verdictClass(entry.overall)}`}>
           {VERDICT_LABEL_UK[entry.overall]}
         </span>
-        <span className="kicker">{entry.donorName}</span>
+        {entry.synthetic ? <span className="tag tag-outline">тестовий запис</span> : null}
         <Deadline entry={entry} />
       </div>
 
@@ -121,41 +116,25 @@ function FeedRow({ entry }: { entry: FeedEntry }) {
 
       <p className="card-body">{entry.summary}</p>
 
-      {/* The score, never alone. The counts are what it is made of, and a reader
-          who ignores the number still gets the shape of the answer. */}
-      <div className="row">
-        <span className="stat">
-          <span className="stat-value">{entry.matchScore}</span>
-          <span className="kicker">відповідність</span>
-        </span>
-        {matched > 0 ? <span className="tag tag-state-matched">{matched} відповідає</span> : null}
-        {problems > 0 ? (
-          <span className="tag tag-state-problem">{problems} під питанням</span>
-        ) : null}
-        {unknown > 0 ? <span className="tag tag-state-unknown">{unknown} невідомо</span> : null}
-        {blocked > 0 ? <span className="tag tag-state-blocked">{blocked} не відповідає</span> : null}
-      </div>
-
-      {entry.blockers.length > 0 ? (
+      {/* One line, and only when there is something to say. A blocker outranks
+          an unanswered question: one ends the conversation, the other is work. */}
+      {blocker ? (
         <p className="card-body">
-          <TriangleAlert size={13} aria-hidden="true" /> {entry.blockers[0]}
+          <TriangleAlert size={13} aria-hidden="true" /> {blocker}
         </p>
-      ) : null}
-
-      {entry.blockers.length === 0 && entry.openQuestions.length > 0 ? (
-        <p className="card-body">
-          <CircleHelp size={13} aria-hidden="true" /> {entry.openQuestions[0]}
+      ) : unknown > 0 ? (
+        <p className="card-body muted">
+          <CircleHelp size={13} aria-hidden="true" /> {unknown} умов не оцінено — у профілі
+          немає відповіді
         </p>
       ) : null}
 
       <div className="card-meta">
-        <Link href={`/hranty/${entry.grantId}`} className="btn btn-secondary">
-          Розбір за критеріями
+        <span className="kicker">{entry.donorName}</span>
+        <Link href={`/hranty/${entry.grantId}`} className="btn btn-ghost">
+          Розбір і робота із заявкою
           <ArrowRight size={14} aria-hidden="true" />
         </Link>
-        <span className="kicker">
-          прочитано з оголошення: {Math.round(entry.extractionConfidence * 100)}%
-        </span>
       </div>
     </article>
   );

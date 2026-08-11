@@ -147,7 +147,10 @@ async function extractOne(item: {
       themes: [],
       targetGroups: g.targetGroups,
       extractionConfidence: run.confidence,
-      extractionNotes: run.notes.join("; "),
+      // Newline-separated, not "; ": a note is prose and prose contains
+      // semicolons. The first live render split "Every field is stated; nothing
+      // is unread." into two broken fragments.
+      extractionNotes: run.notes.join("\n"),
       contentHash,
       retrievedAt: now,
       lastCheckedAt: now,
@@ -182,7 +185,10 @@ async function extractOne(item: {
       sectors: g.sectors,
       targetGroups: g.targetGroups,
       extractionConfidence: run.confidence,
-      extractionNotes: run.notes.join("; "),
+      // Newline-separated, not "; ": a note is prose and prose contains
+      // semicolons. The first live render split "Every field is stated; nothing
+      // is unread." into two broken fragments.
+      extractionNotes: run.notes.join("\n"),
       contentHash,
       lastCheckedAt: now,
     },

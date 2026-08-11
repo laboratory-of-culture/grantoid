@@ -60,6 +60,8 @@ export default async function GrantPage({ params }: { params: Promise<{ id: stri
         <h1 className="h1">{entry.titleUk}</h1>
       </div>
 
+      {entry.synthetic ? <SyntheticWarning /> : null}
+
       <div className="row">
         <span className="tag tag-neutral">{VERDICT_LABEL_UK[entry.overall]}</span>
         <span className="stat">
@@ -114,6 +116,28 @@ export default async function GrantPage({ params }: { params: Promise<{ id: stri
 }
 
 /**
+ * A seeded fixture, said plainly.
+ *
+ * During trial operation the test grants sit in the same feed as live ones, and
+ * an organization that spends a week writing a concept for a call that does not
+ * exist has been actively harmed by this product. Loud, and above the analysis.
+ */
+function SyntheticWarning() {
+  return (
+    <div className="empty stack">
+      <div className="row">
+        <TriangleAlert size={16} aria-hidden="true" />
+        <h2 className="h3">Це тестовий запис</h2>
+      </div>
+      <p className="prose">
+        Такого конкурсу не існує. Запис створено для перевірки системи — не подавайте на нього
+        заявку і не витрачайте на нього час.
+      </p>
+    </div>
+  );
+}
+
+/**
  * What was not read from the announcement.
  *
  * Shown above the criteria rather than in a footnote, because it changes how
@@ -121,8 +145,16 @@ export default async function GrantPage({ params }: { params: Promise<{ id: stri
  * criteria deserves to know that the co-financing rule was never found.
  */
 function ExtractionGaps({ entry }: { entry: FeedEntry }) {
-  const notes = (entry.extractionNotes ?? "").split(";").map((n) => n.trim()).filter(Boolean);
-  if (notes.length === 0) return null;
+  // Split on newlines, not semicolons: a note is prose, and the first render
+  // broke "Every field is stated; nothing is unread." into two fragments.
+  const notes = (entry.extractionNotes ?? "")
+    .split("\n")
+    .map((n) => n.trim())
+    .filter(Boolean);
+
+  // A fixture states everything by construction; there is no gap to report, and
+  // the box would claim one.
+  if (notes.length === 0 || entry.synthetic) return null;
 
   return (
     <div className="empty stack">

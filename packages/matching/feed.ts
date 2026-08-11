@@ -60,6 +60,15 @@ export type FeedEntry = {
   extractionConfidence: number;
   extractionNotes: string | null;
 
+  /**
+   * A hand-authored fixture, not a live call.
+   *
+   * Carried to the screen because during trial operation the seeded test grants
+   * sit in the same feed as real ones, and an organization that spends a week on
+   * a concept for a grant that does not exist has been actively harmed.
+   */
+  synthetic: boolean;
+
   criteria: FeedCriterion[];
   computedAt: Date;
 };
@@ -152,6 +161,7 @@ export async function loadFeed(
 
       extractionConfidence: row.grant.extractionConfidence,
       extractionNotes: row.grant.extractionNotes,
+      synthetic: row.grant.synthetic,
 
       criteria: criteria.sort((a, b) => {
         // Blocking problems first, then what the organization can act on, then

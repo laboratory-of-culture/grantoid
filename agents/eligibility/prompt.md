@@ -43,6 +43,16 @@ Each criterion carries two quotations: the grant text that establishes the
 requirement, and the profile text that settles it. Quote verbatim; do not
 paraphrase into the evidence fields.
 
+Both quotes are shown to a grant manager as evidence, side by side, and they are
+the reason this product is trusted. So `profileQuote` must be **one of the
+sentences from the profile above, copied**. Not a field name, not a state, not a
+summary of several fields — a sentence that person would recognise from their own
+profile page. `non_profit_status: CONFIRMED` is not a quotation; «Неприбутковий
+статус: так. Підтверджено документом.» is.
+
+Where two facts are needed, quote the one that carries the most weight rather
+than joining them.
+
 When the profile does not address the requirement, leave `profileQuote` null,
 set `uncertaintyReason`, and say in `missingInformation` what the organization
 would need to supply.
