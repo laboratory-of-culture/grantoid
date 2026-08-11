@@ -23,10 +23,10 @@ import {
   type Assessed,
 } from "../../packages/schemas/ladder";
 import { MatchResult, MatchResultShape } from "../../packages/schemas/match";
-import { factDefinition } from "../../packages/schemas/fact-registry";
+import { factSentence, renderProfileText } from "../../packages/schemas/profile-text";
 import type { Grant } from "../../packages/schemas/grant";
-import { LEGAL_FORM_LABEL_UK, type OrganizationProfile } from "../../packages/schemas/organization";
-import type { FactState, Verdict } from "../../packages/schemas/verdict";
+import type { OrganizationProfile } from "../../packages/schemas/organization";
+import type { Verdict } from "../../packages/schemas/verdict";
 
 export const TOOLS: readonly string[] = [];
 
@@ -58,78 +58,6 @@ function render(value: unknown): string {
   return JSON.stringify(pruned, null, 2);
 }
 
-const STATE_SUFFIX_UK: Record<FactState, string> = {
-  CONFIRMED: "Підтверджено документом.",
-  SELF_REPORTED: "Зі слів організації, без документа.",
-  EXPLICIT_NEGATIVE: "Організація підтвердила, що цього немає.",
-  UNKNOWN: "",
-};
-
-function factValueUk(fact: OrganizationProfile["facts"][number]): string | null {
-  if (fact.valueList !== null && fact.valueList.length > 0) return fact.valueList.join("; ");
-  if (fact.valueText !== null) return fact.valueText;
-  if (fact.valueNumber !== null) return String(fact.valueNumber);
-  if (fact.valueBoolean !== null) return fact.valueBoolean ? "так" : "ні";
-  return null;
-}
-
-/**
- * One profile fact as a sentence a person can check.
- *
- * This is the text the model is asked to quote from, and therefore the text
- * that ends up under «з профілю організації» on the match breakdown. It used to
- * be JSON — so the model dutifully quoted
- * `non_profit_status: CONFIRMED (true), legal_form: CONFIRMED (…)` and the
- * screen presented the system's own notation as evidence. A citation nobody can
- * verify against something they recognise is not a citation, which is the exact
- * failure this product exists to prevent, appearing in the product itself.
- */
-export function factSentence(fact: OrganizationProfile["facts"][number]): string {
-  const def = factDefinition(fact.key);
-  const label = def?.labelUk ?? fact.key;
-
-  if (fact.state === "UNKNOWN") {
-    return `${label}: організація не відповідала на це питання.`;
-  }
-
-  const value = factValueUk(fact);
-  const suffix = STATE_SUFFIX_UK[fact.state];
-
-  if (fact.state === "EXPLICIT_NEGATIVE") {
-    return `${label}: ${value ?? "ні"}. ${suffix}`;
-  }
-  return `${label}: ${value ?? "—"}. ${suffix}`;
-}
-
-/**
- * The profile as prose.
- *
- * Answered facts first: eighteen rows, most of them unanswered, bury the handful
- * that decide the verdict, and on a 4B model that matters more than it would on
- * a larger one. The unanswered ones still appear, because the whole ladder turns
- * on the model seeing that a question was never asked rather than inferring it
- * from a gap.
- */
-function renderProfile(org: OrganizationProfile): string {
-  const answered = org.facts.filter((f) => f.state !== "UNKNOWN");
-  const unanswered = org.facts.filter((f) => f.state === "UNKNOWN");
-
-  const lines = [
-    `Назва: ${org.name}.`,
-    org.legalForm ? `Правова форма: ${LEGAL_FORM_LABEL_UK[org.legalForm]}.` : null,
-    org.oblast ? `Область: ${org.oblast}.` : null,
-    org.city ? `Місто: ${org.city}.` : null,
-    "",
-    "## Що організація про себе повідомила",
-    ...answered.map((f) => factSentence(f)),
-    "",
-    "## Питання, на які організація не відповідала",
-    ...unanswered.map((f) => factSentence(f)),
-  ].filter((l) => l !== null);
-
-  return lines.join("\n");
-}
-
 function renderGrant(grant: Grant): string {
   return render({
     id: grant.id,
@@ -159,7 +87,7 @@ export function userPrompt(org: OrganizationProfile, grant: Grant): string {
     renderGrant(grant),
     "",
     "# Organization profile",
-    renderProfile(org),
+    renderProfileText(org),
     "",
     "Assess this organization against this grant.",
   ].join("\n");
@@ -182,38 +110,6 @@ export type EligibilityRun = {
   corrections: Correction[];
 };
 
-/**
- * Constrain the model's verdicts to what the profile actually supports.
- *
- * The "unknown is not no" rule is stated in the prompt, and a 4B model does not
- * reliably follow it — the first eval run collapsed every UNCERTAIN pair, once
- * into MATCH and once into NOT_ELIGIBLE, on the same empty field.
- *
- * It does not need to follow it. Which profile fact resolves which rule is
- * recorded data, and the fact's state is known exactly. So the ladder's own
- * `permittedVerdicts` is applied here, after generation: a rule whose resolving
- * fact was never answered becomes UNCERTAIN whatever the model said, and a
- * rejection is only allowed to stand where the organization confirmed the
- * negative.
- *
- * Corrections are recorded rather than applied silently. A model that needs
- * correcting often is one to replace, and that is only visible if the count is.
- */
-/**
- * Strip fields that only mean something on an UNCERTAIN verdict.
- *
- * `uncertaintyReason` is a discriminator on UNCERTAIN, not a property of every
- * criterion, and the model does emit `MATCH` alongside `NO_PROFILE_DATA` — the
- * first live feed lost two matches to the database check that catches exactly
- * that pair. The constraint is right and stays; this is the layer that should
- * have made it unreachable.
- *
- * Normalised rather than rejected. The verdict is what an organization acts on,
- * and discarding a whole assessment over a discriminator that should have been
- * null repeats the mistake extraction made with a malformed date. Verdicts are
- * never touched here — those changes go through the corrections list, where they
- * are counted.
- */
 /**
  * Drop list entries that say the list is empty.
  *
@@ -250,14 +146,6 @@ export function meaningfulEntries(values: readonly string[]): string[] {
   return out;
 }
 
-/**
- * Does this "quote" look like the system talking to itself?
- *
- * Matches the notation the profile used to be rendered in — a fact key, a state
- * enum, sometimes a JSON array. Prose never looks like this, so a false positive
- * costs nothing and a false negative puts unverifiable text on screen under the
- * word «цитата».
- */
 function normalizeForComparison(text: string): string {
   return text
     .replace(/[«»"'`‘’“”]/g, "")
@@ -283,6 +171,14 @@ export function quoteIsInProfile(quote: string, renderedProfile: string): boolea
   return normalizeForComparison(renderedProfile).includes(needle);
 }
 
+/**
+ * Does this "quote" look like the system talking to itself?
+ *
+ * Matches the notation the profile used to be rendered in — a fact key, a state
+ * enum, sometimes a JSON array. Prose never looks like this, so a false positive
+ * costs nothing and a false negative puts unverifiable text on screen under the
+ * word «цитата».
+ */
 export function looksLikeMachineNotation(quote: string): boolean {
   return (
     /\b(UNKNOWN|SELF_REPORTED|CONFIRMED|EXPLICIT_NEGATIVE)\b/.test(quote) ||
@@ -291,6 +187,21 @@ export function looksLikeMachineNotation(quote: string): boolean {
   );
 }
 
+/**
+ * Strip fields that only mean something on an UNCERTAIN verdict.
+ *
+ * `uncertaintyReason` is a discriminator on UNCERTAIN, not a property of every
+ * criterion, and the model does emit `MATCH` alongside `NO_PROFILE_DATA` — the
+ * first live feed lost two matches to the database check that catches exactly
+ * that pair. The constraint is right and stays; this is the layer that should
+ * have made it unreachable.
+ *
+ * Normalised rather than rejected. The verdict is what an organization acts on,
+ * and discarding a whole assessment over a discriminator that should have been
+ * null repeats the mistake extraction made with a malformed date. Verdicts are
+ * never touched here — those changes go through the corrections list, where they
+ * are counted.
+ */
 function coherent(c: MatchResult["criteria"][number]): MatchResult["criteria"][number] {
   if (c.verdict === "UNCERTAIN") return c;
   if (c.uncertaintyReason === null && c.missingInformation === null) return c;
@@ -300,6 +211,23 @@ function coherent(c: MatchResult["criteria"][number]): MatchResult["criteria"][n
   return { ...c, uncertaintyReason: null, missingInformation: null };
 }
 
+/**
+ * Constrain the model's verdicts to what the profile actually supports.
+ *
+ * The "unknown is not no" rule is stated in the prompt, and a 4B model does not
+ * reliably follow it — the first eval run collapsed every UNCERTAIN pair, once
+ * into MATCH and once into NOT_ELIGIBLE, on the same empty field.
+ *
+ * It does not need to follow it. Which profile fact resolves which rule is
+ * recorded data, and the fact's state is known exactly. So the ladder's own
+ * `permittedVerdicts` is applied here, after generation: a rule whose resolving
+ * fact was never answered becomes UNCERTAIN whatever the model said, and a
+ * rejection is only allowed to stand where the organization confirmed the
+ * negative.
+ *
+ * Corrections are recorded rather than applied silently. A model that needs
+ * correcting often is one to replace, and that is only visible if the count is.
+ */
 function applyEvidenceConstraints(
   result: MatchResult,
   org: OrganizationProfile,
@@ -310,7 +238,7 @@ function applyEvidenceConstraints(
   const corrections: Correction[] = [];
   // The same text the model was given, so "is this quote in the profile" is
   // asked against exactly what it read.
-  const profileText = renderProfile(org);
+  const profileText = renderProfileText(org);
 
   const criteria = result.criteria.map((raw) => {
     let c = coherent(raw);

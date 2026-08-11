@@ -610,6 +610,13 @@ body {
   color: var(--color-text-muted);
 }
 
+/* A generated section, shown as written. The model writes paragraphs and
+ * collapsing them turns a readable draft into a wall of text — which is exactly
+ * when someone stops reading and approves it unread. */
+.concept-text {
+  white-space: pre-wrap;
+}
+
 /* ------------------------------------------------------------------ media */
 
 /* Photographs are grayscale, never tinted. */

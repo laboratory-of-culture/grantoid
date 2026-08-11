@@ -101,9 +101,13 @@ export const CONCEPT_SECTIONS: readonly SectionDefinition[] = [
     labelUk: "Орієнтовний бюджет",
     promptUk: "На що приблизно піде фінансування?",
     guidance:
-      "Broad categories with rough shares, inside the call's ceiling if one is known. " +
-      "No line items and no totals unless the call states a figure — a budget invented " +
-      "to look precise is the most damaging thing on this page.",
+      "Name the cost categories this project needs, ordered from largest to smallest, " +
+      "and say plainly that the split between them is for the applicant to decide. " +
+      "**No percentages, no sums, no line items** — not even approximate ones, and not " +
+      "even if they would add up. The first live draft invented 40/30/20/10 because " +
+      "this guidance asked for 'rough shares', and a fabricated split is the most " +
+      "damaging thing that can appear on this page: it looks like a decision somebody " +
+      "made. Only a figure the call itself states may be repeated, as the ceiling.",
     targetWords: 100,
   },
 ] as const;
@@ -125,6 +129,39 @@ export const SECTION_SOURCE_LABEL_UK: Record<SectionSource, string> = {
   HUMAN_EDITED: "Відредаговано вами",
   HUMAN: "Написано вами",
 };
+
+/**
+ * Numbers in a generated section that neither the profile nor the call supports.
+ *
+ * The prompt forbids inventing figures, and a 4B model does not reliably obey —
+ * the first draft produced a budget split of 40/30/20/10, and the second, after
+ * that was fixed, produced «1000 мешканців» out of nothing. This is the same
+ * shape as D5: state the rule in the prompt, enforce it in code.
+ *
+ * Enforcement here is *flagging*, not rewriting. Surgically removing a number
+ * from someone's prose leaves ungrammatical text and hides that anything
+ * happened; naming it lets a grant manager replace it with the real figure,
+ * which is the only person who knows it.
+ *
+ * Digits only. Spelled-out numerals are rarer in this register and much harder
+ * to check, and a guard that fires on «тисячі років спадщини» would be ignored
+ * within a week.
+ */
+export function unsupportedNumbers(text: string, sources: readonly string[]): string[] {
+  const haystack = sources.join("\n").replace(/[\s '’ ]/g, "");
+  const found = new Set<string>();
+
+  for (const match of text.matchAll(/\d[\d\s'’ ]*\d|\d/g)) {
+    const digits = match[0].replace(/[\s'’ ]/g, "");
+    // One- and two-digit numbers are usually ordinals, list counts or years in
+    // a phrase like "14–25 років" that came from the call. Too noisy to flag.
+    if (digits.length < 3) continue;
+    if (haystack.includes(digits)) continue;
+    found.add(digits);
+  }
+
+  return [...found];
+}
 
 /**
  * Whether a draft may leave the product.

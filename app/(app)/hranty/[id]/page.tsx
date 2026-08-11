@@ -5,6 +5,7 @@ import {
   CircleHelp,
   ExternalLink,
   FileQuestion,
+  PenLine,
   TriangleAlert,
 } from "lucide-react";
 
@@ -96,6 +97,21 @@ export default async function GrantPage({ params }: { params: Promise<{ id: stri
           </section>
         ),
       )}
+
+      {/* The way out of analysis and into work. Placed after the criteria, not
+          before: deciding to write is a decision made once the blockers are
+          read, and a button above them invites skipping the part that matters. */}
+      <div className="empty stack">
+        <h2 className="h3">Працювати із цим конкурсом</h2>
+        <p className="prose">
+          Редактор напише чернетку концепції з вашого профілю та умов цього конкурсу, дасть її
+          доповнити й прийме документи донора, якщо ви їх завантажите.
+        </p>
+        <Link href={`/hranty/${entry.grantId}/redaktor`} className="btn btn-primary">
+          <PenLine size={16} aria-hidden="true" />
+          Відкрити редактор
+        </Link>
+      </div>
 
       <div className="row">
         {entry.applicationUrl ? (
