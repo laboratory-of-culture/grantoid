@@ -230,11 +230,23 @@ export function userPrompt(article: string, url: string, headline: string): stri
   ].join("\n");
 }
 
+/**
+ * Where the text came from, because the closing note differs.
+ *
+ * An announcement is a notice pointing at guidelines nobody has read, and every
+ * record from one carries that caveat. A donor document *is* the guidelines —
+ * printing «умови донора не читалися» under a record extracted from the donor's
+ * own PDF is the product contradicting itself in the one place it is supposed
+ * to be careful.
+ */
+export type ExtractionSource = "announcement" | "donor-document";
+
 export async function extractGrant(
   article: string,
   url: string,
   headline: string,
   truncated = false,
+  origin: ExtractionSource = "announcement",
   opts: CompleteOptions = {},
 ): Promise<ExtractionRun> {
   // Reasoning off, per D7: the organization knowledge extractor was measured at
@@ -327,11 +339,19 @@ export async function extractGrant(
       ...missingFields(result),
       ...corrections,
       ...fromModel,
-      ...(truncated ? ["сторінку обрізано — прочитано не весь текст"] : []),
+      ...(truncated
+        ? [
+            origin === "donor-document"
+              ? "документ довший за те, що вміщає модель — прочитано лише початок"
+              : "сторінку обрізано — прочитано не весь текст",
+          ]
+        : []),
       ...(droppedRules.length > 0
         ? [`${droppedRules.length} правил відкинуто: цитати не знайдено на сторінці`]
         : []),
-      "умови донора (PDF/сайт) не читалися — перевірте оригінал оголошення",
+      origin === "donor-document"
+        ? "прочитано документ донора; звіряйте з оригіналом перед подачею"
+        : "умови донора (PDF/сайт) не читалися — перевірте оригінал оголошення",
     ]),
   ];
 

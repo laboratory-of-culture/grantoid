@@ -82,6 +82,7 @@ export async function createGrantFromDocument(
     `file://${input.filename}`,
     input.filename,
     truncated,
+    "donor-document",
   );
 
   if (!run.result) {
