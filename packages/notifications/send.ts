@@ -66,6 +66,26 @@ export async function ensureUnsubscribeToken(userId: string): Promise<string> {
   return token;
 }
 
+/**
+ * Is this token one we issued? A read, and nothing else.
+ *
+ * Lets the page say «посилання не спрацювало» before offering a button that
+ * would fail — a person who truncated the link while copying learns it
+ * immediately rather than after an action that appears broken.
+ *
+ * Safe as a GET precisely because it writes nothing: the reason the unsubscribe
+ * itself is a POST is that mail scanners fetch every URL in a message, and a
+ * lookup they perform costs nobody anything.
+ */
+export async function unsubscribeTokenExists(token: string): Promise<boolean> {
+  if (token.trim().length === 0) return false;
+  const user = await prisma.user.findUnique({
+    where: { unsubscribeToken: token },
+    select: { id: true },
+  });
+  return user !== null;
+}
+
 export async function unsubscribeByToken(token: string): Promise<boolean> {
   if (token.trim().length === 0) return false;
   const user = await prisma.user.findUnique({

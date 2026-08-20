@@ -13,7 +13,7 @@ import { unsubscribeAction, type UnsubscribeResult } from "./actions";
  * click and it is the difference between an unsubscribe they asked for and one
  * a mail scanner performed for them.
  */
-export function UnsubscribeForm({ token }: { token: string }) {
+export function UnsubscribeForm({ token, known }: { token: string; known: boolean }) {
   const [state, submit, pending] = useActionState<UnsubscribeResult, FormData>(
     unsubscribeAction,
     null,
@@ -44,12 +44,33 @@ export function UnsubscribeForm({ token }: { token: string }) {
     );
   }
 
+  // An unrecognised token never gets a button. Offering one that is certain to
+  // fail wastes a click and, worse, leaves someone believing they unsubscribed.
+  if (!known) {
+    return (
+      <>
+        <h1 className="h1">Посилання не спрацювало</h1>
+        <p className="prose">
+          <CircleX size={14} aria-hidden="true" /> Не вдалося розпізнати посилання. Найчастіше
+          це буває, коли адресу скопійовано не повністю. Спробуйте перейти за посиланням із
+          листа ще раз або вимкніть розсилку в профілі.
+        </p>
+        <p className="prose muted">
+          <Link href="/profil">Перейти до профілю</Link>
+        </p>
+      </>
+    );
+  }
+
   return (
     <>
       <h1 className="h1">Відписатися від розсилки</h1>
+      {/* Conditional, not perfective. The first version read «більше не
+          надходитиме» above a button nobody had pressed yet, which describes a
+          finished state and invites closing the tab. */}
       <p className="prose">
-        Щотижневий перелік нових конкурсів більше не надходитиме. Обліковий запис, профіль і
-        стрічка у застосунку лишаються без змін.
+        Натисніть кнопку — і щотижневий перелік нових конкурсів більше не надходитиме.
+        Обліковий запис, профіль і стрічка у застосунку лишаться без змін.
       </p>
 
       <form action={submit}>

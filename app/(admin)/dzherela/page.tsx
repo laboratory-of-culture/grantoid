@@ -31,6 +31,12 @@ export default async function SourcesPage() {
   const countFor = (sourceId: string, status: string) =>
     counts.find((c) => c.sourceId === sourceId && c.status === status)?._count._all ?? 0;
 
+  /** Summed from the same rows the breakdown is drawn from, so they cannot drift. */
+  const totalFor = (sourceId: string) =>
+    counts
+      .filter((c) => c.sourceId === sourceId)
+      .reduce((sum, c) => sum + c._count._all, 0);
+
   return (
     <div className="stack">
       <section className="section">
@@ -116,16 +122,41 @@ export default async function SourcesPage() {
                   <tr>
                     <th scope="row">Знайдено</th>
                     <td>
+                      {/* Every status, and a total that equals their sum.
+                          EXTRACTED and FAILED were absent, so on ГУРТ the row
+                          read «0 грантів, 4 не гранти» beside a table listing
+                          ten items — six of them extracted. A breakdown whose
+                          parts do not add up to the list below it sends an
+                          operator hunting for what is missing. */}
                       <span className="row">
-                        <span className="tag tag-state-unknown">
-                          {countFor(source.id, "NEW")} не розібрано
-                        </span>
                         <span className="tag tag-neutral">
-                          {countFor(source.id, "GRANT")} грантів
+                          {totalFor(source.id)} усього
                         </span>
-                        <span className="tag tag-outline">
-                          {countFor(source.id, "NOT_GRANT")} не гранти
-                        </span>
+                        {countFor(source.id, "NEW") > 0 ? (
+                          <span className="tag tag-state-unknown">
+                            {countFor(source.id, "NEW")} не розібрано
+                          </span>
+                        ) : null}
+                        {countFor(source.id, "GRANT") > 0 ? (
+                          <span className="tag tag-neutral">
+                            {countFor(source.id, "GRANT")} гранти
+                          </span>
+                        ) : null}
+                        {countFor(source.id, "EXTRACTED") > 0 ? (
+                          <span className="tag tag-state-matched">
+                            {countFor(source.id, "EXTRACTED")} оброблено
+                          </span>
+                        ) : null}
+                        {countFor(source.id, "NOT_GRANT") > 0 ? (
+                          <span className="tag tag-outline">
+                            {countFor(source.id, "NOT_GRANT")} не гранти
+                          </span>
+                        ) : null}
+                        {countFor(source.id, "FAILED") > 0 ? (
+                          <span className="tag tag-state-problem">
+                            {countFor(source.id, "FAILED")} помилок
+                          </span>
+                        ) : null}
                       </span>
                     </td>
                     <td />

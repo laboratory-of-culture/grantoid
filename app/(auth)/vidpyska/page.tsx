@@ -1,3 +1,4 @@
+import { unsubscribeTokenExists } from "../../../packages/notifications/send";
 import { UnsubscribeForm } from "./form";
 
 export const dynamic = "force-dynamic";
@@ -26,11 +27,17 @@ export default async function UnsubscribePage({
   searchParams: Promise<{ t?: string }>;
 }) {
   const { t } = await searchParams;
+  const token = t ?? "";
+
+  // A read, not a write — which is why it is safe on a GET while the unsubscribe
+  // itself is not. Someone who truncated the link while copying learns that here
+  // rather than after pressing a button that then appears to fail.
+  const known = await unsubscribeTokenExists(token);
 
   return (
     <div className="auth-panel">
       <span className="kicker">Розсилка</span>
-      <UnsubscribeForm token={t ?? ""} />
+      <UnsubscribeForm token={token} known={known} />
     </div>
   );
 }

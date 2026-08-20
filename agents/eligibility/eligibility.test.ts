@@ -8,7 +8,12 @@
 
 import { describe, expect, it } from "vitest";
 
-import { looksLikeMachineNotation, meaningfulEntries, quoteIsInProfile } from "./index";
+import {
+  looksLikeMachineNotation,
+  meaningfulEntries,
+  quoteIsInProfile,
+  stripEnums,
+} from "./index";
 
 describe("quoteIsInProfile", () => {
   const profile = [
@@ -119,5 +124,38 @@ describe("meaningfulEntries", () => {
     expect(meaningfulEntries(["Увага: організація не має партнера."])).toEqual([
       "Увага: організація не має партнера.",
     ]);
+  });
+});
+
+describe("stripEnums", () => {
+  it("removes an enum the model dropped inside a sentence", () => {
+    // Live output on the feed: the sentence was fine, the bracket was not.
+    expect(stripEnums("Вимога юридичної форми (MANDATORY) не виконується")).toBe(
+      "Вимога юридичної форми не виконується",
+    );
+  });
+
+  it("removes a bare enum between words", () => {
+    expect(stripEnums("Критерій NOT_ELIGIBLE через географію")).toBe(
+      "Критерій через географію",
+    );
+  });
+
+  it("leaves a donor acronym alone", () => {
+    // WPHF is four uppercase letters and belongs on screen — which is why the
+    // vocabulary is a closed list rather than "any run of capitals".
+    expect(stripEnums("Фонд WPHF не фінансує цей напрям")).toBe(
+      "Фонд WPHF не фінансує цей напрям",
+    );
+  });
+
+  it("does not cut an enum name out of a longer word", () => {
+    expect(stripEnums("UNCERTAINTY не є станом")).toBe("UNCERTAINTY не є станом");
+  });
+
+  it("leaves clean Ukrainian untouched", () => {
+    expect(stripEnums("Організація не працює у цій області.")).toBe(
+      "Організація не працює у цій області.",
+    );
   });
 });
