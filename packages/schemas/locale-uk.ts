@@ -90,3 +90,48 @@ export function isEmptySetProse(text: string | null | undefined): boolean {
   if (!trimmed) return true;
   return EMPTY_SET_PROSE_UK.test(trimmed);
 }
+
+/**
+ * Enum names the model drops into the middle of a Ukrainian sentence.
+ *
+ * Live output: «Вимога юридичної форми (MANDATORY) не виконується». Stripping a
+ * leading slug and rejecting a bare enum caught neither, because this one sits
+ * inside the sentence and the sentence is otherwise fine.
+ *
+ * A closed list rather than "any run of capitals": donor names are acronyms too,
+ * and WPHF is four uppercase letters that belong on screen. The vocabulary this
+ * system emits is known, so it is the thing to match.
+ */
+const ENUM_VOCABULARY = [
+  "MANDATORY",
+  "PREFERRED",
+  "EXCLUDED",
+  "MATCH",
+  "LIKELY_MATCH",
+  "UNCERTAIN",
+  "LIKELY_NOT_ELIGIBLE",
+  "NOT_ELIGIBLE",
+  "NO_PROFILE_DATA",
+  "AMBIGUOUS_CALL",
+  "CONFLICTING_EVIDENCE",
+  "UNKNOWN",
+  "SELF_REPORTED",
+  "CONFIRMED",
+  "EXPLICIT_NEGATIVE",
+].join("|");
+
+/** In brackets, or standing alone between non-letters. */
+const EMBEDDED_ENUM = new RegExp(
+  String.raw`\s*[(\[]\s*(?:${ENUM_VOCABULARY})\s*[)\]]` +
+    String.raw`|(?<![\p{L}_])(?:${ENUM_VOCABULARY})(?![\p{L}_])`,
+  "gu",
+);
+
+export function stripEnums(text: string): string {
+  return text
+    .replace(EMBEDDED_ENUM, " ")
+    .replace(/\s{2,}/g, " ")
+    // The removal leaves a gap before the punctuation that followed it.
+    .replace(/\s+([.,;:!?])/g, "$1")
+    .trim();
+}

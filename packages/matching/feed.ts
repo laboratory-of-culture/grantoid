@@ -12,6 +12,7 @@
 
 import { forOrganization } from "../db/tenancy";
 import { bucketOf } from "../schemas/ladder";
+import { stripEnums } from "../schemas/locale-uk";
 import type { Bucket, UncertaintyReason, Verdict } from "../schemas/verdict";
 
 export type FeedCriterion = {
@@ -174,8 +175,13 @@ export async function loadFeed(
       matchScore: row.matchScore,
       recommend: row.recommend,
       summary: row.summary,
-      blockers: row.blockers,
-      openQuestions: row.openQuestions,
+      // Cleaned on the way out, not only on the way in. The generation-time
+      // filter cannot reach rows already written, and the feed was still
+      // showing «Вимога юридичної форми (MANDATORY) не виконується» from
+      // matches computed before it existed. A guarantee about what reaches the
+      // screen belongs at the boundary the screen reads from.
+      blockers: row.blockers.map(stripEnums).filter((b) => b.length > 0),
+      openQuestions: row.openQuestions.map(stripEnums).filter((q) => q.length > 0),
 
       extractionConfidence: row.grant.extractionConfidence,
       extractionNotes: row.grant.extractionNotes,

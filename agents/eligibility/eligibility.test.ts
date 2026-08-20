@@ -12,8 +12,8 @@ import {
   looksLikeMachineNotation,
   meaningfulEntries,
   quoteIsInProfile,
-  stripEnums,
 } from "./index";
+import { stripEnums } from "../../packages/schemas/locale-uk";
 
 describe("quoteIsInProfile", () => {
   const profile = [
