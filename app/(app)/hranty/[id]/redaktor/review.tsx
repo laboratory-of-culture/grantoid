@@ -76,10 +76,13 @@ export function SectionReview({
         </p>
       ) : null}
 
+      {/* One copy of the text, always. Plain before a review, marked after —
+          `white-space: pre-wrap` via .concept-text keeps the model's paragraphs,
+          because losing them turns a readable draft into a wall. */}
+      <Highlighted content={content} spans={spans} />
+
       {spans.length > 0 ? (
         <>
-          <Highlighted content={content} spans={spans} />
-
           <div className="stack">
             {spans.map(({ finding }) => (
               <FindingCard

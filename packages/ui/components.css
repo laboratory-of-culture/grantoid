@@ -279,9 +279,19 @@ body {
 .card-kicker { composes: kicker; }
 .card-title { margin: 0; font-size: var(--text-md); font-weight: var(--weight-bold); line-height: var(--leading-snug); }
 .card-body { margin: 0; font-size: var(--text-sm); color: var(--color-neutral-800); }
+/* Pushes one trailing element to the far edge of a card footer.
+ *
+ * Put on the element, not on the container. `justify-content: space-between` on
+ * `.card-meta` looked right on a feed card — metadata left, action right — and
+ * wrong everywhere the footer holds several sibling actions, where it spread
+ * three buttons across the full width of the card. Which element should travel
+ * is a property of that element, not of every footer. */
+.push-end { margin-inline-start: auto; }
+
 .card-meta {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-4);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -489,6 +499,15 @@ body {
   padding: var(--space-4);
   border: var(--border);
   background: var(--color-surface-raised);
+}
+
+/* The state tag and the action, side by side at the end of a fact row. */
+.fact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
 }
 
 .fact-label { font-size: var(--text-sm); font-weight: var(--weight-semibold); }

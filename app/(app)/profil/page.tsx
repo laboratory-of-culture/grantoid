@@ -221,7 +221,11 @@ function FactLine({
         {unknown ? definition.questionUk : (fact?.valueText ?? "—")}
       </div>
 
-      <div className="stack">
+      {/* One line, not a column. Stacked, the tag and the action made each fact
+          row nearly three times the height of its content, and across eighteen
+          rows that is most of a screen spent on whitespace. A profile you have
+          to scroll three screens to read is one nobody finishes filling in. */}
+      <div className="fact-actions">
         <span className={tag.cls}>
           <tag.Icon size={12} aria-hidden="true" />
           {tag.label}

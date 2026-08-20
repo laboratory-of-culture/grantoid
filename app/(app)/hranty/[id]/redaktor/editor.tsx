@@ -226,9 +226,20 @@ function SectionCard({
         </form>
       ) : (
         <>
-          {/* `white-space: pre-wrap` via .concept-text: the model writes
-              paragraphs and losing them turns a readable draft into a wall. */}
-          <p className="prose concept-text">{section.content}</p>
+          {/* `SectionReview` owns the section text: plain until a review runs,
+              marked afterwards. Rendering the paragraph here as well put the
+              same text on screen twice once findings arrived, and left the
+              reader to work out which copy was which.
+
+              It sits here, above the provenance and the actions, because it is
+              the thing the card is about. Pointing comes before rewriting: a
+              person who can see which four words are the problem fixes them,
+              while one handed a new paragraph has to re-read and compare. */}
+          <SectionReview
+            grantId={grantId}
+            sectionKey={meta.key}
+            content={section.content}
+          />
 
           {/* Only where a model wrote it. A section someone typed came from
               their own head and does not need a citation. */}
@@ -266,16 +277,6 @@ function SectionCard({
               Переписування замінить лише те, чого ви не редагували — ця секція збережеться.
             </p>
           ) : null}
-
-          {/* Pointing before rewriting. A person who can see which four words
-              are the problem fixes them; a person handed a new paragraph has to
-              re-read and compare. The assistant stays for when the whole
-              section needs to change. */}
-          <SectionReview
-            grantId={grantId}
-            sectionKey={meta.key}
-            content={section.content}
-          />
 
           <Assistant grantId={grantId} sectionKey={meta.key} />
         </>

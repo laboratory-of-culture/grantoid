@@ -48,7 +48,14 @@ export function FactEditor(props: FactEditorProps) {
         {!unknown ? (
           <form action={clear}>
             <input type="hidden" name="key" value={props.factKey} />
-            <button type="submit" className="btn btn-ghost" aria-label="Прибрати відповідь">
+            <button
+              type="submit"
+              className="btn btn-ghost"
+              // A screen reader had a name for this; a mouse user had a
+              // symbol and a guess.
+              title="Прибрати відповідь"
+              aria-label="Прибрати відповідь"
+            >
               <Undo2 size={14} aria-hidden="true" />
             </button>
           </form>

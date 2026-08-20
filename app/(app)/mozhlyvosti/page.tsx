@@ -163,7 +163,7 @@ function FeedRow({ entry }: { entry: FeedEntry }) {
 
       <div className="card-meta">
         <span className="kicker">{entry.donorName}</span>
-        <Link href={`/hranty/${entry.grantId}`} className="btn btn-ghost">
+        <Link href={`/hranty/${entry.grantId}`} className="btn btn-ghost push-end">
           Розбір і робота із заявкою
           <ArrowRight size={14} aria-hidden="true" />
         </Link>
