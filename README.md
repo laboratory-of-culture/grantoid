@@ -132,6 +132,7 @@ npx tsx scripts/snapshot-pages.ts          # статичні знімки ек�
 
 ## Документи
 
+- `docs/DEPLOY.md` — де це розгорнути, як і за скільки
 - `docs/DECISIONS.md` — рішення D1–D7 із причинами й вимірами
 - `docs/proposals/milestone-1.md` — модель даних
 - `docs/proposals/milestone-2.md` — поточний етап, борги, відкрите питання
