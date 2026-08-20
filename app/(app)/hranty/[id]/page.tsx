@@ -16,7 +16,7 @@ import {
   VERDICT_LABEL_UK,
   type Bucket,
 } from "../../../../packages/schemas/verdict";
-import { AiNotice } from "../../../components/beta";
+import { AiNotice, Provenance } from "../../../components/beta";
 import { requireDb } from "../../../lib/session";
 
 export const dynamic = "force-dynamic";
@@ -73,6 +73,19 @@ export default async function GrantPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <p className="prose">{entry.summary}</p>
+
+      {/* The basis for the verdict above it. The per-criterion quotes below are
+          the full argument; this is the one-line answer to "on what". */}
+      <Provenance
+        items={[
+          `${entry.criteria.length} умов конкурсу`,
+          `прочитано з оголошення ${Math.round(entry.extractionConfidence * 100)}%`,
+          entry.criteria.filter((c) => c.profileQuote !== null).length > 0
+            ? `${entry.criteria.filter((c) => c.profileQuote !== null).length} підтверджено цитатою з профілю`
+            : null,
+          `оцінено ${entry.computedAt.toLocaleDateString("uk-UA")}`,
+        ]}
+      />
 
       <ExtractionGaps entry={entry} />
 

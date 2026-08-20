@@ -7,6 +7,7 @@ import { listDonorDocuments } from "../../../../../packages/db/donor-docs";
 import { DonorDocuments } from "./donor-docs";
 import { loadMatch } from "../../../../../packages/matching/feed";
 import { CONCEPT_SECTIONS } from "../../../../../packages/schemas/concept";
+import { FACT_KEYS } from "../../../../../packages/schemas/fact-registry";
 import { AiNotice } from "../../../../components/beta";
 import { requireDb } from "../../../../lib/session";
 import { ConceptEditor } from "./editor";
@@ -26,15 +27,16 @@ export const dynamic = "force-dynamic";
  * from the conditions is the expensive kind of rework.
  */
 export default async function EditorPage({ params }: { params: Promise<{ id: string }> }) {
-  const { organizationId } = await requireDb();
+  const { db, organizationId } = await requireDb();
   const { id } = await params;
 
   const entry = await loadMatch(organizationId, id);
   if (!entry) notFound();
 
-  const [concept, donorDocs] = await Promise.all([
+  const [concept, donorDocs, answeredFacts] = await Promise.all([
     loadConcept(organizationId, id),
     listDonorDocuments(organizationId, id),
+    db.organizationFact.count({ where: { state: { not: "UNKNOWN" } } }),
   ]);
 
   return (
@@ -98,6 +100,15 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
           labelUk: s.labelUk,
           promptUk: s.promptUk,
         }))}
+        // What the generator was allowed to write from. Named on every section
+        // it produced, because a paragraph that will end up in an application
+        // has to be traceable to something the organization can check.
+        sources={{
+          answeredFacts,
+          totalFacts: FACT_KEYS.length,
+          criteria: entry.criteria.length,
+          donorDocs: donorDocs.length,
+        }}
       />
     </div>
   );

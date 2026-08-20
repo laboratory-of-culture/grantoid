@@ -441,6 +441,18 @@ model User {
   createdAt    DateTime @default(now())
   lastSeenAt   DateTime?
 
+  /// Weekly digest of new opportunities.
+  ///
+  /// Opt-in, and off by default. An NGO that never asked for mail and receives
+  /// it has been spammed by a tool it trusted with its statute.
+  digestOptIn Boolean @default(false)
+  /// Random, and the only credential the unsubscribe link carries. Unsubscribing
+  /// must not require signing in — a person who wants mail to stop is not in the
+  /// mood to remember a password, and a link that demands one is a link that
+  /// gets reported as spam instead.
+  unsubscribeToken String? @unique
+  lastDigestAt     DateTime?
+
   memberships Membership[]
   sessions    Session[]
 }

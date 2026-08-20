@@ -53,6 +53,13 @@ export default function SignInPage() {
       <p className="prose muted">
         Ще немає облікового запису? <Link href="/reyestratsiya">Зареєструйте організацію</Link>.
       </p>
+
+      {/* Readable before signing up, which is the only time it is useful for
+          deciding whether to. */}
+      <p className="field-hint">
+        <Link href="/pryvatnist">Політика приватності</Link> — документи не залишають нашої
+        інфраструктури.
+      </p>
     </div>
   );
 }

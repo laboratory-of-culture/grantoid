@@ -3,7 +3,7 @@ import { ArrowRight, CalendarClock, CircleHelp, TriangleAlert } from "lucide-rea
 
 import { loadFeed, type FeedEntry } from "../../../packages/matching/feed";
 import { VERDICT_LABEL_UK } from "../../../packages/schemas/verdict";
-import { AiNotice } from "../../components/beta";
+import { AiNotice, Provenance } from "../../components/beta";
 import { requireDb } from "../../lib/session";
 
 export const dynamic = "force-dynamic";
@@ -98,6 +98,8 @@ function EmptyFeed() {
  */
 function FeedRow({ entry }: { entry: FeedEntry }) {
   const unknown = entry.criteria.filter((c) => c.bucket === "UNKNOWN").length;
+  const matched = entry.criteria.filter((c) => c.bucket === "MATCHED").length;
+  const blocked = entry.criteria.filter((c) => c.bucket === "NOT_MATCHED").length;
   const blocker = entry.blockers[0] ?? null;
 
   return (
@@ -128,6 +130,20 @@ function FeedRow({ entry }: { entry: FeedEntry }) {
           немає відповіді
         </p>
       ) : null}
+
+      {/* Where the verdict came from. Compact, but never absent: a conclusion
+          whose basis lives only on the next screen is one nobody checks, and
+          "the detail is one click away" is the argument that ends with the
+          click never happening. */}
+      <Provenance
+        items={[
+          `${entry.criteria.length} умов конкурсу`,
+          matched > 0 ? `${matched} підтверджено профілем` : null,
+          unknown > 0 ? `${unknown} без відповіді в профілі` : null,
+          blocked > 0 ? `${blocked} не виконано` : null,
+          `прочитано з оголошення ${Math.round(entry.extractionConfidence * 100)}%`,
+        ]}
+      />
 
       <div className="card-meta">
         <span className="kicker">{entry.donorName}</span>

@@ -5,6 +5,7 @@ import { Check, FileText, RefreshCw, Sparkles } from "lucide-react";
 
 import type { ConceptView } from "../../../../../packages/db/concepts";
 import { SECTION_SOURCE_LABEL_UK } from "../../../../../packages/schemas/concept";
+import { Provenance } from "../../../../components/beta";
 import {
   approveSectionAction,
   assistSectionAction,
@@ -15,6 +16,24 @@ import {
 } from "./actions";
 
 type SectionMeta = { key: string; labelUk: string; promptUk: string };
+
+/** What the generator was allowed to draw on. Named on every section it wrote. */
+export type ConceptSources = {
+  answeredFacts: number;
+  totalFacts: number;
+  criteria: number;
+  donorDocs: number;
+};
+
+function sourceItems(sources: ConceptSources): (string | null)[] {
+  return [
+    `профіль: ${sources.answeredFacts} з ${sources.totalFacts} полів`,
+    sources.criteria > 0 ? `умови конкурсу: ${sources.criteria}` : null,
+    sources.donorDocs > 0
+      ? `документи донора: ${sources.donorDocs}`
+      : "документів донора немає",
+  ];
+}
 
 /**
  * The editor.
@@ -29,10 +48,12 @@ export function ConceptEditor({
   grantId,
   concept,
   allSections,
+  sources,
 }: {
   grantId: string;
   concept: ConceptView | null;
   allSections: SectionMeta[];
+  sources: ConceptSources;
 }) {
   const [genState, generate, generating] = useActionState<EditorResult, FormData>(
     generateAction,
@@ -105,6 +126,7 @@ export function ConceptEditor({
             grantId={grantId}
             meta={meta}
             section={byKey.get(meta.key) ?? null}
+            sources={sources}
           />
         ))}
       </div>
@@ -116,10 +138,12 @@ function SectionCard({
   grantId,
   meta,
   section,
+  sources,
 }: {
   grantId: string;
   meta: SectionMeta;
   section: ConceptView["sections"][number] | null;
+  sources: ConceptSources;
 }) {
   const [editing, setEditing] = useState(false);
   const [saveState, save, saving] = useActionState<EditorResult, FormData>(
@@ -198,6 +222,10 @@ function SectionCard({
           {/* `white-space: pre-wrap` via .concept-text: the model writes
               paragraphs and losing them turns a readable draft into a wall. */}
           <p className="prose concept-text">{section.content}</p>
+
+          {/* Only where a model wrote it. A section someone typed came from
+              their own head and does not need a citation. */}
+          {section.source !== "HUMAN" ? <Provenance items={sourceItems(sources)} /> : null}
 
           <div className="card-meta">
             <button type="button" className="btn btn-secondary" onClick={() => setEditing(true)}>

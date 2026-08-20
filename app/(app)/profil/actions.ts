@@ -14,6 +14,8 @@ import {
 } from "../../../packages/db/confirmation";
 import { ExtractionFailed, extractDocumentFacts } from "../../../packages/db/extraction";
 import { AnswerRejected, answerFact, clearFact } from "../../../packages/db/facts";
+import { ensureUnsubscribeToken } from "../../../packages/notifications/send";
+import { prisma } from "../../../packages/db/tenancy";
 import { currentDb } from "../../lib/session";
 
 export type ActionResult = { ok: true } | { ok: false; message: string };
@@ -204,6 +206,37 @@ export async function deleteDocumentAction(
   } catch (err) {
     console.error("delete failed", err);
     return { ok: false, message: "Не вдалося видалити документ. Спробуйте ще раз." };
+  }
+
+  revalidatePath("/profil");
+  return { ok: true };
+}
+
+/**
+ * Turn the weekly digest on or off.
+ *
+ * Per person, not per organization: two people in the same NGO can want
+ * different things from their inbox, and subscribing a colleague is not a
+ * decision anyone gets to make for them.
+ */
+export async function setDigestAction(
+  _prev: ActionResult | null,
+  form: FormData,
+): Promise<ActionResult> {
+  const ctx = await currentDb();
+  if (!ctx) return { ok: false, message: "Немає активної організації." };
+
+  const on = form.get("digestOptIn") === "on";
+
+  try {
+    if (on) await ensureUnsubscribeToken(ctx.user.userId);
+    await prisma.user.update({
+      where: { id: ctx.user.userId },
+      data: { digestOptIn: on },
+    });
+  } catch (err) {
+    console.error("digest preference failed", err);
+    return { ok: false, message: "Не вдалося зберегти налаштування. Спробуйте ще раз." };
   }
 
   revalidatePath("/profil");

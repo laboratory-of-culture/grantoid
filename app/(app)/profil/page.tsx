@@ -8,10 +8,12 @@ import {
 import { LEGAL_FORM_LABEL_UK, type LegalForm } from "../../../packages/schemas/organization";
 import { formatOblast } from "../../../packages/schemas/place";
 import { pendingCandidates } from "../../../packages/db/confirmation";
+import { prisma } from "../../../packages/db/tenancy";
 import { currentDb } from "../../lib/session";
 import { Documents } from "./documents";
 import { FactEditor } from "./fact-editor";
 import { ConfirmationQueue } from "./queue";
+import { DigestPreference } from "./digest";
 
 export const dynamic = "force-dynamic";
 
@@ -74,12 +76,19 @@ export default async function ProfilePage() {
     );
   }
 
-  const [org, facts, documents, queue] = await Promise.all([
+  const [org, facts, documents, queue, account] = await Promise.all([
     ctx.db.organization.findUnique({ where: { id: ctx.organizationId } }),
     ctx.db.organizationFact.findMany(),
-    ctx.db.document.findMany({ orderBy: { uploadedAt: "desc" } }),
+    // Donor guidelines belong to a call, not to the organization, and would
+    // otherwise appear in the profile's document list as if they described it.
+    ctx.db.document.findMany({ where: { grantId: null }, orderBy: { uploadedAt: "desc" } }),
     pendingCandidates(ctx.db),
+    prisma.user.findUnique({
+      where: { id: ctx.user.userId },
+      select: { digestOptIn: true },
+    }),
   ]);
+  const digestOptIn = account?.digestOptIn ?? false;
 
   if (!org) return null;
 
@@ -187,6 +196,8 @@ export default async function ProfilePage() {
           </section>
         );
       })}
+
+      <DigestPreference enabled={digestOptIn} />
     </div>
   );
 }

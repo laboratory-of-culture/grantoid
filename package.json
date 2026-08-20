@@ -19,7 +19,8 @@
     "smoke": "tsx scripts/smoke-pages.ts",
     "fixtures:check": "tsx evals/check-fixtures.ts",
     "eval": "tsx evals/run-eval.ts",
-    "audit:tokens": "node scripts/audit-tokens.mjs"
+    "audit:tokens": "node scripts/audit-tokens.mjs",
+    "digest": "tsx scripts/send-digests.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",
@@ -27,6 +28,7 @@
     "lucide-react": "^0.469.0",
     "mammoth": "^1.12.1",
     "next": "^15.1.3",
+    "nodemailer": "^9.0.5",
     "ollama": "^0.5.11",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -36,6 +38,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "prisma": "^6.1.0",

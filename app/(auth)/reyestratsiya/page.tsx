@@ -79,6 +79,13 @@ export default function RegisterPage() {
       <p className="prose muted">
         Уже маєте обліковий запис? <Link href="/vhid">Увійдіть</Link>.
       </p>
+
+      {/* Before the account exists, not after: this is the moment somebody is
+          deciding whether to hand us their statute. */}
+      <p className="field-hint">
+        Створюючи запис, ви довіряєте нам документи організації. Що з ними відбувається —
+        у <Link href="/pryvatnist">політиці приватності</Link>.
+      </p>
     </div>
   );
 }

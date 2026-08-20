@@ -56,3 +56,6 @@ Thumbs.db
 # Static snapshots of signed-in pages, written by scripts/snapshot-pages.ts
 # for a visual look without a session. Never committed.
 public/_preview/
+
+# Weekly digest. Written to .mail/ when SMTP is not configured.
+.mail/
