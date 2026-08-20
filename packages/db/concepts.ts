@@ -49,6 +49,16 @@ export type ConceptView = {
   }[];
   /** Section keys still carrying an unread AI draft. */
   unreviewed: string[];
+  /**
+   * Donor documents that produced readable text — what the generator actually
+   * had, not what was uploaded.
+   *
+   * A scan with no text layer is a file in the list and nothing in the prompt.
+   * Reported from here because this is where the material is already read, and
+   * because a provenance line counting the uploads would credit the draft to a
+   * source the model never saw.
+   */
+  donorDocsRead: number;
   updatedAt: Date;
 };
 
@@ -103,6 +113,7 @@ export async function loadConcept(
         s.source === "AI_DRAFT" ? unsupportedNumbers(s.content, sources) : [],
     })),
     unreviewed: unreviewedSections(draft.sections),
+    donorDocsRead: donor.readable.length,
     updatedAt: draft.updatedAt,
   };
 }

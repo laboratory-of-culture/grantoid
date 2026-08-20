@@ -8,6 +8,7 @@ import { DonorDocuments } from "./donor-docs";
 import { loadMatch } from "../../../../../packages/matching/feed";
 import { CONCEPT_SECTIONS } from "../../../../../packages/schemas/concept";
 import { FACT_KEYS } from "../../../../../packages/schemas/fact-registry";
+import { formatDateUk } from "../../../../../packages/schemas/locale-uk";
 import { AiNotice } from "../../../../components/beta";
 import { requireDb } from "../../../../lib/session";
 import { ConceptEditor } from "./editor";
@@ -36,7 +37,11 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
   const [concept, donorDocs, answeredFacts] = await Promise.all([
     loadConcept(organizationId, id),
     listDonorDocuments(organizationId, id),
-    db.organizationFact.count({ where: { state: { not: "UNKNOWN" } } }),
+    db.organizationFact.count({
+      // Registry keys only. Rows survive a key being retired from the registry,
+      // and counting them would print a share larger than its own denominator.
+      where: { key: { in: FACT_KEYS }, state: { not: "UNKNOWN" } },
+    }),
   ]);
 
   return (
@@ -56,7 +61,7 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
         {entry.deadlineIsKnown && entry.deadline ? (
           <span className="tag tag-neutral">
             <CalendarClock size={12} aria-hidden="true" />
-            подання до {entry.deadline.toLocaleDateString("uk-UA")}
+            подання до {formatDateUk(entry.deadline)}
           </span>
         ) : (
           <span className="tag tag-outline">термін не вказано в оголошенні</span>
@@ -107,7 +112,7 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
           answeredFacts,
           totalFacts: FACT_KEYS.length,
           criteria: entry.criteria.length,
-          donorDocs: donorDocs.length,
+          donorDocs: concept?.donorDocsRead ?? 0,
         }}
       />
     </div>

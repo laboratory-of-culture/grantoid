@@ -31,6 +31,20 @@ const PROMPT_PATH = path.join(process.cwd(), "agents", "assistant", "prompt.md")
 /** Longer than this and it is not an instruction, it is pasted content. */
 export const MAX_INSTRUCTION_CHARS = 500;
 
+/**
+ * Donor material handed to the assistant, per revision.
+ *
+ * A quarter of what the generator gets. The generator writes eight sections
+ * from scratch and needs the whole call; the assistant is changing one paragraph
+ * on instruction, and shipping a twenty-thousand-character PDF to shorten a
+ * sentence is the most expensive thing this product does per unit of value.
+ *
+ * The terms that matter to a section — eligibility, co-financing, what the money
+ * may cover — sit near the front of a guidelines document, which is what makes
+ * a prefix a reasonable cut rather than an arbitrary one.
+ */
+export const MAX_ASSISTANT_DONOR_CHARS = 5_000;
+
 export function systemPrompt(): string {
   return readFileSync(PROMPT_PATH, "utf8");
 }
@@ -66,10 +80,14 @@ export function userPrompt(input: {
       : []),
     "",
     ...(input.donorText.trim().length > 0
-      ? ["# Документи донора", input.donorText, ""]
+      ? [
+          "# Документи донора (початок)",
+          input.donorText.slice(0, MAX_ASSISTANT_DONOR_CHARS),
+          "",
+        ]
       : []),
     "# Профіль організації",
-    renderProfileText(input.org),
+    renderProfileText(input.org, { includeUnanswered: false }),
     "",
     `# Секція: ${def?.labelUk ?? input.sectionKey}`,
     `Питання, на яке вона відповідає: ${def?.promptUk ?? "—"}`,

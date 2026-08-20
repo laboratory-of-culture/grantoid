@@ -1,7 +1,4 @@
-import Link from "next/link";
-import { CircleCheck, CircleX } from "lucide-react";
-
-import { unsubscribeByToken } from "../../../packages/notifications/send";
+import { UnsubscribeForm } from "./form";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +10,14 @@ export const dynamic = "force-dynamic";
  * reported as spam instead — which costs the sender far more than an unguessable
  * token does.
  *
- * The token stays valid after use, so a second click says «ви відписані» rather
+ * Rendering this page changes nothing. The write happens on the POST behind the
+ * button, because mail-security scanners fetch every link in a message before
+ * anyone reads it and a GET that unsubscribes hands them that decision. Mail
+ * clients that support RFC 8058 still offer their own one-click control — the
+ * `List-Unsubscribe-Post` header in `mail.ts` — so the button is the fallback
+ * path, not the only one.
+ *
+ * The token stays valid after use, so a second visit says «ви відписані» rather
  * than «посилання недійсне», which reads like the unsubscribe failed.
  */
 export default async function UnsubscribePage({
@@ -22,31 +26,11 @@ export default async function UnsubscribePage({
   searchParams: Promise<{ t?: string }>;
 }) {
   const { t } = await searchParams;
-  const done = await unsubscribeByToken(t ?? "");
 
   return (
     <div className="auth-panel">
       <span className="kicker">Розсилка</span>
-      <h1 className="h1">{done ? "Ви відписані" : "Посилання не спрацювало"}</h1>
-
-      <p className="prose">
-        {done ? (
-          <>
-            <CircleCheck size={14} aria-hidden="true" /> Більше не надсилатимемо щотижневий
-            перелік можливостей. Обліковий запис і всі ваші дані лишаються без змін — стрічка
-            й далі доступна у застосунку.
-          </>
-        ) : (
-          <>
-            <CircleX size={14} aria-hidden="true" /> Не вдалося розпізнати посилання. Можливо,
-            воно неповне після копіювання. Розсилку можна вимкнути в профілі організації.
-          </>
-        )}
-      </p>
-
-      <p className="prose muted">
-        <Link href="/profil">Перейти до профілю</Link>
-      </p>
+      <UnsubscribeForm token={t ?? ""} />
     </div>
   );
 }

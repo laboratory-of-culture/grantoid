@@ -234,6 +234,22 @@ export async function setDigestAction(
       where: { id: ctx.user.userId },
       data: { digestOptIn: on },
     });
+
+    // Consent is a decision about where organization-linked material goes, so it
+    // is recorded like every other decision in this file. Without it, "why did
+    // we start getting mail" and a disputed unsubscribe both have no answer.
+    await prisma.auditEntry.create({
+      data: {
+        organizationId: ctx.organizationId,
+        actorType: "USER",
+        actorId: ctx.user.userId,
+        action: on ? "digest.opted_in" : "digest.opted_out",
+        subjectType: "User",
+        subjectId: ctx.user.userId,
+        fromState: on ? "OFF" : "ON",
+        toState: on ? "ON" : "OFF",
+      },
+    });
   } catch (err) {
     console.error("digest preference failed", err);
     return { ok: false, message: "Не вдалося зберегти налаштування. Спробуйте ще раз." };

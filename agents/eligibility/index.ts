@@ -55,7 +55,10 @@ function render(value: unknown): string {
       return v;
     }),
   );
-  return JSON.stringify(pruned, null, 2);
+  // Compact, not indented. Two-space indentation on a nested object is pure
+  // whitespace tokens — measurable, and it buys nothing: the model is not
+  // reading this for pleasure, and the structure survives without the padding.
+  return JSON.stringify(pruned);
 }
 
 function renderGrant(grant: Grant): string {

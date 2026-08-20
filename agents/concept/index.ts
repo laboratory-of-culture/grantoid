@@ -131,7 +131,9 @@ export function userPrompt(
         ]
       : []),
     "# Профіль організації",
-    renderProfileText(org),
+    // Only what the profile says. A writer must not use an unanswered field,
+    // and its absence carries that instruction without spending a line on it.
+    renderProfileText(org, { includeUnanswered: false }),
     "",
     "# Секції, які треба написати",
     renderSections(sections),

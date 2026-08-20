@@ -11,6 +11,7 @@ import {
 
 import { factDefinition } from "../../../../packages/schemas/fact-registry";
 import { loadMatch, type FeedCriterion, type FeedEntry } from "../../../../packages/matching/feed";
+import { NOUN_UK, countUk, formatDateUk } from "../../../../packages/schemas/locale-uk";
 import {
   BUCKET_LABEL_UK,
   VERDICT_LABEL_UK,
@@ -41,6 +42,10 @@ export default async function GrantPage({ params }: { params: Promise<{ id: stri
 
   const entry = await loadMatch(organizationId, id);
   if (!entry) notFound();
+
+  // Criteria the profile actually settled — a quote on both sides, which is the
+  // only thing this screen counts as evidence.
+  const cited = entry.criteria.filter((c) => c.profileQuote !== null).length;
 
   const groups: { bucket: Bucket; items: FeedCriterion[] }[] = (
     ["NOT_MATCHED", "POTENTIAL_PROBLEM", "UNKNOWN", "MATCHED"] as const
@@ -75,15 +80,16 @@ export default async function GrantPage({ params }: { params: Promise<{ id: stri
       <p className="prose">{entry.summary}</p>
 
       {/* The basis for the verdict above it. The per-criterion quotes below are
-          the full argument; this is the one-line answer to "on what". */}
+          the full argument; this is the one-line answer to "on what".
+
+          The extraction percentage is deliberately absent: `ExtractionGaps`
+          renders it directly below, with the list of what was missed, and the
+          same number twice in adjacent lines reads as two different facts. */}
       <Provenance
         items={[
-          `${entry.criteria.length} умов конкурсу`,
-          `прочитано з оголошення ${Math.round(entry.extractionConfidence * 100)}%`,
-          entry.criteria.filter((c) => c.profileQuote !== null).length > 0
-            ? `${entry.criteria.filter((c) => c.profileQuote !== null).length} підтверджено цитатою з профілю`
-            : null,
-          `оцінено ${entry.computedAt.toLocaleDateString("uk-UA")}`,
+          `${countUk(entry.criteria.length, NOUN_UK.criterion)} конкурсу`,
+          cited > 0 ? `${cited} підтверджено цитатою з профілю` : null,
+          `оцінено ${formatDateUk(entry.computedAt)}`,
         ]}
       />
 

@@ -22,6 +22,15 @@ export type Message = {
   to: string;
   subject: string;
   text: string;
+  /**
+   * The one-click unsubscribe address, sent as a header as well as in the body.
+   *
+   * RFC 8058: mail clients surface a header unsubscribe as a native button, and
+   * the person who would otherwise press "spam" presses that instead. Required
+   * rather than optional — a bulk message without it is one nobody can leave
+   * without hunting through the text.
+   */
+  unsubscribeUrl: string;
 };
 
 export interface MailTransport {
@@ -44,7 +53,13 @@ export class FileTransport implements MailTransport {
     const safe = message.to.replace(/[^\w.@-]/g, "_");
     await writeFile(
       path.join(this.dir, `${stamp}-${safe}.txt`),
-      [`To: ${message.to}`, `Subject: ${message.subject}`, "", message.text].join("\n"),
+      [
+        `To: ${message.to}`,
+        `Subject: ${message.subject}`,
+        `List-Unsubscribe: <${message.unsubscribeUrl}>`,
+        "",
+        message.text,
+      ].join("\n"),
       "utf8",
     );
   }
@@ -64,6 +79,12 @@ export class SmtpTransport implements MailTransport {
       to: message.to,
       subject: message.subject,
       text: message.text,
+      headers: {
+        "List-Unsubscribe": `<${message.unsubscribeUrl}>`,
+        // Without this a client must assume the link needs a confirmation page.
+        // With it, one press ends the subscription, which is the whole point.
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
     });
   }
 }

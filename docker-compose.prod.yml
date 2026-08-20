@@ -1,0 +1,79 @@
+# Production stack: app, database, model runtime.
+#
+# Three containers and no more. The model runs here rather than behind a hosted
+# API because DECISIONS.md D1 says an organization's documents do not leave this
+# infrastructure — which is also why none of this fits on a serverless platform.
+#
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# TLS is not in this file. Put Caddy or nginx in front; see docs/DEPLOY.md.
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-grant}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-grant_assistant}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-grant}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Not published to the host. Nothing outside this network needs the
+    # database, and a Postgres reachable from the internet is how a pilot
+    # becomes an incident.
+    expose:
+      - "5432"
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+    expose:
+      - "11434"
+    # Remove this block on a CPU-only host — see the capacity table in
+    # docs/DEPLOY.md before you do.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-grant}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-grant_assistant}?schema=public
+      OLLAMA_HOST: http://ollama:11434
+      GRANT_AI_MODEL: ${GRANT_AI_MODEL:-qwen3:4b}
+      GRANT_AI_NUM_CTX: ${GRANT_AI_NUM_CTX:-16384}
+      GRANT_AI_SEED: ${GRANT_AI_SEED:-7}
+      APP_BASE_URL: ${APP_BASE_URL:?set APP_BASE_URL}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      NODE_ENV: production
+    volumes:
+      # Uploaded statutes and donor PDFs. On a volume, never in the image, and
+      # backed up with the database — a document without its row is unreachable
+      # and a row without its document is a download that 404s.
+      - storage:/app/.storage
+    ports:
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  db-data:
+  ollama-models:
+  storage:

@@ -70,7 +70,18 @@ export type FeedEntry = {
   synthetic: boolean;
 
   criteria: FeedCriterion[];
+
+  /**
+   * When the verdict was computed — not when the call appeared.
+   *
+   * The two come apart every time a profile is edited: that changes the profile
+   * version hash, which re-assesses every grant and stamps all of them with a
+   * fresh `computedAt`. Anything asking "what is new to this organization" wants
+   * `firstSeenAt` instead.
+   */
   computedAt: Date;
+  /** When ingestion first saw this call. Stable across re-assessment. */
+  firstSeenAt: Date;
 };
 
 export type Feed = {
@@ -97,7 +108,6 @@ export async function loadFeed(
   const db = forOrganization(organizationId);
 
   const rows = await db.match.findMany({
-    where: opts.recommendedOnly ? { recommend: true } : {},
     orderBy: [{ computedAt: "desc" }],
     take: opts.limit ?? 200,
     include: {
@@ -113,6 +123,14 @@ export async function loadFeed(
   for (const row of rows) {
     if (seen.has(row.grantId)) continue;
     seen.add(row.grantId);
+
+    // After the dedup, never in the query. A grant keeps its older match rows
+    // by design, so filtering on `recommend` before the dedup lets a superseded
+    // row stand in for the current verdict: the newest match says no, the query
+    // hides it, and the one below it still says yes. The digest is the only
+    // caller, which makes that the difference between a quiet week and mailing
+    // an organization a call it is no longer recommended for.
+    if (opts.recommendedOnly && !row.recommend) continue;
 
     const criteria: FeedCriterion[] = row.assessments.map((a) => {
       const rule = row.grant.rules.find((r) => r.id === a.ruleId);
@@ -175,6 +193,7 @@ export async function loadFeed(
         return order[a.bucket] - order[b.bucket];
       }),
       computedAt: row.computedAt,
+      firstSeenAt: row.grant.firstSeenAt,
     });
   }
 

@@ -18,6 +18,7 @@
  */
 
 import type { FeedEntry } from "../matching/feed";
+import { NOUN_UK, countUk, formatDateUk } from "../schemas/locale-uk";
 
 export type DigestEntry = {
   titleUk: string;
@@ -31,6 +32,8 @@ export type Digest = {
   subject: string;
   text: string;
   entries: DigestEntry[];
+  /** Also sent as a `List-Unsubscribe` header — see `mail.ts`. */
+  unsubscribeUrl: string;
 };
 
 /**
@@ -60,13 +63,19 @@ export function selectForDigest(
     });
 }
 
-/** Ukrainian plural for a count of opportunities. */
+/**
+ * Ukrainian plural for a count of opportunities.
+ *
+ * The adjective agrees too, which is why this is not a bare `countUk` call: it
+ * is «1 нова можливість» and «3 нові можливості», not one adjective with three
+ * nouns hung off it.
+ */
 export function opportunitiesUk(n: number): string {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return `${n} нова можливість`;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${n} нові можливості`;
-  return `${n} нових можливостей`;
+  return countUk(n, {
+    one: "нова можливість",
+    few: "нові можливості",
+    many: `нових ${NOUN_UK.opportunity.many}`,
+  });
 }
 
 export function buildDigest(
@@ -83,6 +92,11 @@ export function buildDigest(
     url: `${baseUrl}/hranty/${e.grantId}`,
   }));
 
+  // Built once and returned, because the header and the body have to point at
+  // the same place — a client's native unsubscribe and the link in the text
+  // disagreeing is the kind of thing nobody notices until it matters.
+  const unsubscribeUrl = `${baseUrl}/vidpyska?t=${unsubscribeToken}`;
+
   const lines = [
     `${organizationName} — ${opportunitiesUk(picked.length)} у стрічці.`,
     "",
@@ -90,7 +104,7 @@ export function buildDigest(
       `• ${e.titleUk}`,
       `  ${e.donorName}${
         e.deadlineIsKnown && e.deadline
-          ? ` · подання до ${e.deadline.toLocaleDateString("uk-UA")}`
+          ? ` · подання до ${formatDateUk(e.deadline)}`
           : " · термін не вказано в оголошенні"
       }`,
       `  ${e.url}`,
@@ -104,12 +118,13 @@ export function buildDigest(
     "",
     "Система в режимі дослідної експлуатації: добір ще не перевірено на живих даних.",
     "",
-    `Відписатися: ${baseUrl}/vidpyska?t=${unsubscribeToken}`,
+    `Відписатися: ${unsubscribeUrl}`,
   ];
 
   return {
     subject: `${opportunitiesUk(picked.length)} для ${organizationName}`,
     text: lines.join("\n"),
     entries: picked,
+    unsubscribeUrl,
   };
 }

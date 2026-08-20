@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { FileUp, Trash2 } from "lucide-react";
 
 import type { DonorDocument } from "../../../../../packages/db/donor-docs";
+import { formatDateUk } from "../../../../../packages/schemas/locale-uk";
 import {
   deleteDonorDocAction,
   uploadDonorDocAction,
@@ -79,7 +80,7 @@ export function DonorDocuments({
                 <tr key={doc.id}>
                   <td>{doc.filename}</td>
                   <td className="mono">{formatSize(doc.sizeBytes)}</td>
-                  <td>{doc.uploadedAt.toLocaleDateString("uk-UA")}</td>
+                  <td>{formatDateUk(doc.uploadedAt)}</td>
                   <td>
                     <form action={remove}>
                       <input type="hidden" name="grantId" value={grantId} />

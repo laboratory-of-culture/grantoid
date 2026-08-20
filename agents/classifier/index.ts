@@ -50,6 +50,22 @@ export type Classification = z.infer<typeof ClassificationShape>;
  */
 export const CONFIDENCE_FLOOR = 0.7;
 
+/**
+ * A window sized to the job.
+ *
+ * This prompt is a title, a one-line summary and the rules — 555 tokens
+ * measured, against a default window of 16384. Ollama allocates the KV cache for
+ * the whole window whether or not it is used, and on the 4 GB card this runs on
+ * that is memory the model itself wants. Classification is also a batch stage of
+ * its own, so the reload a different window costs is paid once, not per item.
+ *
+ * Eight times the measured prompt. A source that starts publishing long
+ * summaries hits `ContextOverflow` and says so, which is the failure worth
+ * having — Ollama's own behaviour is to silently truncate from the start and
+ * drop the system prompt.
+ */
+export const CLASSIFIER_NUM_CTX = 4096;
+
 export type ClassificationRun = {
   result: Classification | null;
   usage: Usage;
@@ -79,7 +95,7 @@ export async function classify(
   // Reasoning off: this is a short, near-mechanical judgement over two lines of
   // text, and D7 measured that reasoning on mechanical work costs an order of
   // magnitude in latency while making the model editorialise.
-  const options: CompleteOptions = { think: false, ...opts };
+  const options: CompleteOptions = { think: false, numCtx: CLASSIFIER_NUM_CTX, ...opts };
 
   const completion = await complete(
     systemPrompt(),

@@ -25,8 +25,27 @@ export type DigestOutcome = {
   errors: { email: string; error: string }[];
 };
 
-export function baseUrl(): string {
-  return process.env.APP_BASE_URL ?? "http://localhost:3000";
+/**
+ * The origin every link in the message is built from.
+ *
+ * A localhost default is right for the file transport and catastrophic for a
+ * real one: an operator who configures SMTP without knowing this variable exists
+ * mails NGOs a digest whose every link — the unsubscribe link included — points
+ * at their own machine. Unsubscribing then cannot work at all, which is the
+ * precise outcome that gets a sender reported as spam. So a real transport has
+ * to be told, and refusing is the only failure mode that stays visible.
+ */
+export function baseUrl(transportName: string): string {
+  const configured = process.env.APP_BASE_URL;
+  if (configured) return configured;
+
+  if (transportName !== "file") {
+    throw new Error(
+      "APP_BASE_URL is required when mail actually leaves: every link in the " +
+        "digest, including the unsubscribe link, is built from it.",
+    );
+  }
+  return "http://localhost:3000";
 }
 
 /**
@@ -70,14 +89,32 @@ export async function sendDueDigests(
 ): Promise<DigestOutcome> {
   const now = opts.now ?? new Date();
   const transport = opts.transport ?? mailTransport();
+  // Resolved once, before anything is sent. Inside the loop a missing
+  // APP_BASE_URL would be caught per user and reported as a per-mailbox
+  // failure — a configuration error wearing the costume of a delivery problem.
+  const origin = baseUrl(transport.name);
   const due = new Date(now.getTime() - DIGEST_INTERVAL_DAYS * 86_400_000);
 
   const users = await prisma.user.findMany({
     where: {
       digestOptIn: true,
+      // Someone with no organization has no feed to write about. Excluded here
+      // rather than skipped in the loop so `considered` is a number an operator
+      // can reconcile against sent + skipped + failed.
+      memberships: { some: {} },
       ...(opts.force ? {} : { OR: [{ lastDigestAt: null }, { lastDigestAt: { lt: due } }] }),
     },
-    include: { memberships: { include: { organization: true } } },
+    // Same ordering as `resolveSession`, and for the same reason: without it
+    // the "first" membership is whatever Postgres returns, so someone in two
+    // NGOs could be mailed about one organization while the app signs them into
+    // the other.
+    include: {
+      memberships: {
+        orderBy: { createdAt: "asc" },
+        take: 1,
+        include: { organization: true },
+      },
+    },
   });
 
   const outcome: DigestOutcome = {
@@ -108,11 +145,16 @@ export async function sendDueDigests(
       const digest = buildDigest(
         membership.organization.name,
         picked,
-        baseUrl(),
+        origin,
         token,
       );
 
-      await transport.send({ to: user.email, subject: digest.subject, text: digest.text });
+      await transport.send({
+        to: user.email,
+        subject: digest.subject,
+        text: digest.text,
+        unsubscribeUrl: digest.unsubscribeUrl,
+      });
 
       await prisma.user.update({ where: { id: user.id }, data: { lastDigestAt: now } });
       outcome.sent += 1;

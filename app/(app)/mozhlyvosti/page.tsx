@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CalendarClock, CircleHelp, TriangleAlert } from "lucide-react";
 
 import { loadFeed, type FeedEntry } from "../../../packages/matching/feed";
+import { NOUN_UK, countUk, formatDateUk } from "../../../packages/schemas/locale-uk";
 import { VERDICT_LABEL_UK } from "../../../packages/schemas/verdict";
 import { AiNotice, Provenance } from "../../components/beta";
 import { requireDb } from "../../lib/session";
@@ -92,14 +93,20 @@ function EmptyFeed() {
  * fails and the summary gets skipped along with everything else.
  *
  * What survives is what a decision to open actually rests on: is it worth my
- * time, when does it close, and what is the one thing standing in the way. The
- * full breakdown, the per-bucket counts and how much of the call was read all
- * live one click away, on the screen built to hold them.
+ * time, when does it close, and what is the one thing standing in the way — and
+ * one quiet line naming what the verdict was computed from. That line came back
+ * after being cut: without it the row is readable and the claim is
+ * unaccountable, and "the full breakdown is one click away" is exactly the
+ * argument that ends with nobody clicking. It is a list of sources, not a second
+ * summary, which is what keeps it from becoming the eighth competing signal.
  */
 function FeedRow({ entry }: { entry: FeedEntry }) {
-  const unknown = entry.criteria.filter((c) => c.bucket === "UNKNOWN").length;
-  const matched = entry.criteria.filter((c) => c.bucket === "MATCHED").length;
-  const blocked = entry.criteria.filter((c) => c.bucket === "NOT_MATCHED").length;
+  // One pass. Every bucket, because a provenance line whose parts do not add up
+  // to the total it prints beside them invites the reader to work out what is
+  // missing, and the bucket dropped here was the one meaning "read the
+  // guidelines" — see the explainable-output skill.
+  const byBucket = { MATCHED: 0, POTENTIAL_PROBLEM: 0, NOT_MATCHED: 0, UNKNOWN: 0 };
+  for (const c of entry.criteria) byBucket[c.bucket] += 1;
   const blocker = entry.blockers[0] ?? null;
 
   return (
@@ -124,10 +131,11 @@ function FeedRow({ entry }: { entry: FeedEntry }) {
         <p className="card-body">
           <TriangleAlert size={13} aria-hidden="true" /> {blocker}
         </p>
-      ) : unknown > 0 ? (
+      ) : byBucket.UNKNOWN > 0 ? (
         <p className="card-body muted">
-          <CircleHelp size={13} aria-hidden="true" /> {unknown} умов не оцінено — у профілі
-          немає відповіді
+          <CircleHelp size={13} aria-hidden="true" />{" "}
+          {countUk(byBucket.UNKNOWN, NOUN_UK.criterion)} не оцінено — у профілі немає
+          відповіді
         </p>
       ) : null}
 
@@ -137,10 +145,18 @@ function FeedRow({ entry }: { entry: FeedEntry }) {
           click never happening. */}
       <Provenance
         items={[
-          `${entry.criteria.length} умов конкурсу`,
-          matched > 0 ? `${matched} підтверджено профілем` : null,
-          unknown > 0 ? `${unknown} без відповіді в профілі` : null,
-          blocked > 0 ? `${blocked} не виконано` : null,
+          `${countUk(entry.criteria.length, NOUN_UK.criterion)} конкурсу`,
+          byBucket.MATCHED > 0 ? `${byBucket.MATCHED} підтверджено профілем` : null,
+          byBucket.NOT_MATCHED > 0 ? `${byBucket.NOT_MATCHED} не виконано` : null,
+          byBucket.POTENTIAL_PROBLEM > 0
+            ? `${byBucket.POTENTIAL_PROBLEM} під питанням`
+            : null,
+          // Not repeated in the line above it: the unknown count already has a
+          // sentence of its own when there is no blocker, and saying it twice in
+          // adjacent lines is how a row stops being scannable.
+          byBucket.UNKNOWN > 0 && blocker !== null
+            ? `${byBucket.UNKNOWN} без відповіді в профілі`
+            : null,
           `прочитано з оголошення ${Math.round(entry.extractionConfidence * 100)}%`,
         ]}
       />
@@ -167,7 +183,7 @@ function Deadline({ entry }: { entry: FeedEntry }) {
   return (
     <span className={`tag ${days <= 7 ? "tag-state-problem" : "tag-neutral"}`}>
       <CalendarClock size={12} aria-hidden="true" />
-      до {entry.deadline.toLocaleDateString("uk-UA")}
+      до {formatDateUk(entry.deadline)}
       {days >= 0 ? ` · ${days} дн.` : ""}
     </span>
   );

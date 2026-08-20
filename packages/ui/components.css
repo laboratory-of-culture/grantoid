@@ -566,40 +566,33 @@ body {
 /* The beta notice. Accent-bordered rather than accent-filled: it has to be
  * unmissable without competing with the accent colour's other job, which is
  * marking a blocking eligibility problem. A product-status banner that looks
- * like a rejection is a banner that teaches people to ignore rejections. */
+ * like a rejection is a banner that teaches people to ignore rejections.
+ *
+ * Permanent, so it is one line. A strip that stays has to be cheap to look past
+ * and impossible to miss — the opposite trade from a banner someone dismisses
+ * once, which is what this was until the condition it reports turned out not to
+ * go away when somebody clicks. */
 .banner {
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-2) var(--space-5);
   background: var(--color-surface-raised);
   border-bottom: var(--rule-weight) solid var(--color-accent-500);
 }
 
-.banner-icon { flex: none; color: var(--color-accent-700); }
-.banner-text { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
-
-.banner-title {
-  margin: 0;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-bold);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-}
+.banner-icon { flex: none; color: var(--color-accent-700); align-self: center; }
 
 .banner-body {
   margin: 0;
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   color: var(--color-neutral-800);
   max-width: var(--measure);
-  line-height: var(--leading-normal);
+  line-height: var(--leading-snug);
 }
 
-.banner-dismiss { flex: none; margin-inline-start: auto; align-self: center; }
-
-/* Rides with a single AI conclusion, every time it is read. The banner is
- * dismissed once; this is not dismissible, because the claim it qualifies is
- * regenerated on every page. */
+/* Rides with a single AI conclusion, every time it is read. The banner qualifies
+ * the product; this qualifies one claim, and neither is dismissible. */
 .ai-note {
   display: inline-flex;
   align-items: center;
@@ -608,6 +601,21 @@ body {
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--color-text-muted);
+}
+
+/* Where a statement came from. Quiet and always present — a claim whose basis
+ * is only visible on another screen is a claim nobody checks. */
+.provenance {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
+  color: var(--color-text-muted);
+}
+
+.provenance-label {
+  font-family: var(--font-mono);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
 }
 
 /* A generated section, shown as written. The model writes paragraphs and

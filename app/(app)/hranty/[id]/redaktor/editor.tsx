@@ -5,6 +5,7 @@ import { Check, FileText, RefreshCw, Sparkles } from "lucide-react";
 
 import type { ConceptView } from "../../../../../packages/db/concepts";
 import { SECTION_SOURCE_LABEL_UK } from "../../../../../packages/schemas/concept";
+import { NOUN_UK, countUk } from "../../../../../packages/schemas/locale-uk";
 import { Provenance } from "../../../../components/beta";
 import {
   approveSectionAction,
@@ -27,11 +28,16 @@ export type ConceptSources = {
 
 function sourceItems(sources: ConceptSources): (string | null)[] {
   return [
-    `профіль: ${sources.answeredFacts} з ${sources.totalFacts} полів`,
-    sources.criteria > 0 ? `умови конкурсу: ${sources.criteria}` : null,
+    `профіль: ${sources.answeredFacts} з ${countUk(sources.totalFacts, NOUN_UK.field)}`,
+    sources.criteria > 0
+      ? `умови конкурсу: ${sources.criteria}`
+      : "умов конкурсу не прочитано",
+    // Zero is stated rather than omitted. An upload that produced no text — a
+    // scan with no text layer — is a file in the list and nothing in the prompt,
+    // and silence here would let the reader assume it was used.
     sources.donorDocs > 0
-      ? `документи донора: ${sources.donorDocs}`
-      : "документів донора немає",
+      ? `документи донора: ${countUk(sources.donorDocs, NOUN_UK.document)}`
+      : "документів донора не прочитано",
   ];
 }
 

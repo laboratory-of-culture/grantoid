@@ -53,13 +53,21 @@ export function factSentence(fact: OrganizationProfile["facts"][number]): string
  *
  * Answered facts first: eighteen rows, most unanswered, bury the handful that
  * decide anything, and on a 4B model that matters more than it would on a larger
- * one. The unanswered ones still appear, because both agents depend on seeing
- * that a question was never asked rather than inferring it from a gap — for the
- * eligibility agent that is the difference between UNCERTAIN and a rejection,
- * and for the generator it is the difference between leaving a section thin and
- * inventing its content.
+ * one.
+ *
+ * `includeUnanswered` exists because the two readers need different things. The
+ * eligibility agent must see that a question was never asked — that is the
+ * difference between UNCERTAIN and a rejection, and the whole ladder turns on
+ * it. The writing agents must not use what the profile does not say, and for
+ * them a field's absence carries exactly that instruction at no cost. Listing
+ * eight «організація не відповідала» sentences for a draft spends tokens to say
+ * nothing the shorter version does not.
  */
-export function renderProfileText(org: OrganizationProfile): string {
+export function renderProfileText(
+  org: OrganizationProfile,
+  opts: { includeUnanswered?: boolean } = {},
+): string {
+  const includeUnanswered = opts.includeUnanswered ?? true;
   const answered = org.facts.filter((f) => f.state !== "UNKNOWN");
   const unanswered = org.facts.filter((f) => f.state === "UNKNOWN");
 
@@ -71,9 +79,13 @@ export function renderProfileText(org: OrganizationProfile): string {
     "",
     "## Що організація про себе повідомила",
     ...answered.map(factSentence),
-    "",
-    "## Питання, на які організація не відповідала",
-    ...unanswered.map(factSentence),
+    ...(includeUnanswered && unanswered.length > 0
+      ? [
+          "",
+          "## Питання, на які організація не відповідала",
+          ...unanswered.map(factSentence),
+        ]
+      : []),
   ]
     .filter((line) => line !== null)
     .join("\n");
