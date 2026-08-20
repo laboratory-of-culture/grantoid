@@ -264,3 +264,52 @@ The product's central claim is that it tells those apart. A claim that depends o
 every future agent remembering a convention is a claim that fails. It belongs in
 the schema, where `EXPLICIT_NEGATIVE` is the only state that can justify
 `NOT_ELIGIBLE`, and `UNKNOWN` can only ever produce `UNCERTAIN`.
+
+---
+
+## D8 — qwen3:4b stays, measured against the alternatives
+
+**Date:** 2026-08-20 · **Status:** accepted
+
+`qwen3:4b` remains the model for every agent. `gemma3:4b` was pulled and run
+against the golden set; it is not a candidate.
+
+| | qwen3:4b (think) | gemma3:4b |
+|---|---|---|
+| false-eligible | 0% | 0% |
+| **unknown-collapse** | **0%** | **50%** |
+| verbatim citations | 100% | 100% |
+| overall verdict, exact | 88% | 50% |
+| per criterion, exact | 90% | 61% |
+| per criterion, ±1 rung | 95% | 72% |
+| feed recall | 100% | **0%** |
+| verdicts corrected after generation | 1 | 4 |
+| median latency | 80.5s | 20.1s |
+
+**Why.** gemma3 is four times faster and unusable. It collapses half the
+`UNCERTAIN` pairs into a definite verdict — the characteristic small-model
+failure this product exists to prevent — and its feed recall is zero: it rejects
+everything, so an NGO would open an empty feed and conclude the tool has nothing
+for it.
+
+The speed and the failure are the same fact. gemma3 does not support Ollama's
+`think` option, and D6 recorded that reasoning is precisely what takes
+unknown-collapse from 50% to 0% on this task. A model that cannot reason before
+answering is not a cheaper version of this one; it is a different product.
+
+**What this does not settle.** Language quality. `qwen3:4b` writes «правовго»,
+«берати участь», «зростання участь» — errors a grant manager will paste into a
+real application. That is an argument for a larger model, not for gemma3, and it
+is a separate experiment: `qwen3:8b` is pulled and unmeasured. It will not fit
+the 4 GB card and would run partly on CPU, which the batch stages can absorb and
+the editor's assistant cannot.
+
+**Consequences.**
+
+- The model tag stays `qwen3:4b` in `.env.example` and in `docker-compose.prod.yml`.
+- Any future candidate is compared on all five metrics from `eval-fixtures`, not
+  on latency. A model that answers faster by refusing to hold uncertainty moves
+  the wrong number in the right direction.
+- Comparing a model that reasons against one that cannot is still the right
+  comparison: each is configured as well as it can be, and that configuration is
+  recorded with the result.
