@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, LogOut, Search } from "lucide-react";
+import { Building2, FileText, LogOut, Search } from "lucide-react";
 
 import { BetaBanner } from "../components/beta";
 import { requireDb } from "../lib/session";
@@ -11,20 +11,25 @@ import { signOutAction } from "../(auth)/actions";
  * manager can read is part of that.
  */
 /**
- * Two entries, and that is the whole product.
+ * Three entries, and that is the whole product.
  *
- * There used to be five. «Концепції», «Заявки» and «Вимоги донора» were three
- * top-level sections for work that only ever makes sense against one specific
- * call — you do not write a concept in general, you write it for a deadline. As
- * separate destinations they would each have opened on an empty list asking the
- * user to pick a grant, which is the screen they had just come from.
+ * There used to be five. «Концепції» and «Вимоги донора» are gone for good:
+ * neither is work you do in general, and as separate destinations each would
+ * have opened on an empty list asking you to pick a grant — the screen you had
+ * just come from. Both live in the editor, against one call.
  *
- * That work now lives in the grant editor, reached from an opportunity, where
- * the call's own conditions are already on screen.
+ * «Заявки» came back, for two reasons the editor alone cannot serve. A draft
+ * you started last week needs somewhere to be found again. And a call a donor
+ * mailed you was never in the feed at all, so an entry point that starts at the
+ * feed cannot reach it.
  */
 const NAV: { href: string; label: string; Icon: typeof Building2; ready: boolean }[] = [
   { href: "/profil", label: "Профіль організації", Icon: Building2, ready: true },
   { href: "/mozhlyvosti", label: "Можливості", Icon: Search, ready: true },
+  // Third, after the feed. The editor was reachable only from an opportunity,
+  // which assumed every call comes from a source we crawl. A draft you want to
+  // return to, and a call a donor mailed you, both need a door of their own.
+  { href: "/zayavky", label: "Заявки", Icon: FileText, ready: true },
 ];
 // "Джерела" is deliberately absent: the source registry is operator tooling,
 // not something an NGO manages, and a nav item that redirects on click is worse

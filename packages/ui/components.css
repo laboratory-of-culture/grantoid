@@ -651,6 +651,94 @@ body {
   min-width: 0;
 }
 
+/* ----------------------------------------------------------- the document */
+
+/* The concept as one document, with its findings beside it rather than under
+ * it. Eight separate cards were the shape of the data, not of the work: a
+ * concept note is read as one argument, and boxed paragraphs make it impossible
+ * to see whether the goal answers the problem two boxes above. */
+.doc-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 24rem);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.doc {
+  background: var(--color-surface-raised);
+  border: var(--border);
+  padding: var(--space-6);
+}
+
+.doc-section + .doc-section { margin-top: var(--space-6); }
+
+.doc-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+/* Quiet until pointed at. Eight rows of buttons permanently on screen was the
+ * loudest thing on the page, and none of it is what a person came to read. */
+.doc-controls {
+  display: flex;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease);
+}
+
+.doc-section:hover .doc-controls,
+.doc-section:focus-within .doc-controls { opacity: 1; }
+
+.doc-text {
+  margin: 0;
+  max-width: var(--measure);
+  line-height: var(--leading-normal);
+  /* The model writes paragraphs; collapsing them turns a readable draft into a
+     wall, which is when people stop reading and approve it unread. */
+  white-space: pre-wrap;
+}
+
+.doc-editor { width: 100%; font-family: inherit; line-height: var(--leading-normal); }
+
+/* The rail follows the document rather than scrolling away from it: a finding
+ * you have to scroll back up to read is one that gets applied unread. */
+.doc-rail-inner {
+  position: sticky;
+  top: var(--space-5);
+}
+
+.rail-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: var(--border-quiet);
+  background: var(--color-surface-raised);
+  cursor: pointer;
+}
+
+/* The selected finding and its highlight are the same object, said twice. */
+.rail-card-active { border-color: var(--color-ink); }
+
+.rail-quote {
+  margin: 0;
+  padding-left: var(--space-3);
+  border-left: var(--rule-weight-quiet) solid var(--color-neutral-400);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--color-neutral-800);
+}
+
+@media (max-width: 1100px) {
+  .doc-shell { grid-template-columns: 1fr; }
+  .doc-rail-inner { position: static; }
+  .doc-controls { opacity: 1; }
+}
+
 /* ------------------------------------------------------- writing review */
 
 /* A flagged span, marked the way a proofreader marks one: underlined, not
@@ -660,11 +748,22 @@ body {
  * `mark` defaults to a yellow background in every browser — reset it, or the
  * design system loses to a user-agent stylesheet. */
 .flag {
+  /* A button, so that a flagged span is reachable by keyboard and answers a
+     click — an underline nobody can tab to is decoration. Everything a button
+     brings with it is reset except the pointer. */
+  display: inline;
+  margin: 0;
+  padding: 0 0 var(--space-1);
+  border: 0;
+  border-bottom: var(--rule-weight) solid var(--color-neutral-500);
   background: transparent;
   color: inherit;
-  border-bottom: var(--rule-weight) solid var(--color-neutral-500);
-  padding-bottom: var(--space-1);
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
 }
+
+.flag-active { background: var(--color-neutral-200); }
 
 /* Only the unsupported claim gets the accent. It is the one that reaches a
  * funder as a statement of fact by the organization; the rest are prose. */

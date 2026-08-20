@@ -236,9 +236,21 @@ enum ItemStatus {
 /// NULL on `deadline`, `cofinancingRequired` or `maxSharePct` means UNREAD, not
 /// absent. `extractionNotes` records what was not read.
 model Grant {
-  id       String @id @default(cuid())
-  sourceId String
-  source   Source @relation(fields: [sourceId], references: [id])
+  id       String  @id @default(cuid())
+  /// Null for a call an organization supplied itself — see `ownerOrganizationId`.
+  sourceId String?
+  source   Source? @relation(fields: [sourceId], references: [id])
+
+  /// Set when this call belongs to one organization rather than to everybody.
+  ///
+  /// Donors mail PDFs. A call that arrived in one NGO's inbox was never
+  /// published on ГУРТ or Простір, and putting it in the shared `Grant` table
+  /// unscoped would show every other organization a competition they were not
+  /// invited to — and tell them who else is applying. So the row is owned, and
+  /// every read that builds a feed filters on `ownerOrganizationId IS NULL OR
+  /// = :organization`.
+  ownerOrganizationId String?
+  ownerOrganization   Organization? @relation("PrivateGrants", fields: [ownerOrganizationId], references: [id], onDelete: Cascade)
 
   /// Stable dedupe key within a source — usually the canonical URL path.
   externalKey String
@@ -289,6 +301,7 @@ model Grant {
   documents Document[]
 
   @@unique([sourceId, externalKey])
+  @@index([ownerOrganizationId])
   @@index([status, deadline])
   @@index([lastCheckedAt])
 }
@@ -388,6 +401,8 @@ model Organization {
   candidates  FactCandidate[]
   memberships Membership[]
   concepts    ConceptDraft[]
+  /// Calls this organization supplied itself, invisible to everyone else.
+  privateGrants Grant[] @relation("PrivateGrants")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

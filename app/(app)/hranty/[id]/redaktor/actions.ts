@@ -9,7 +9,9 @@ import {
   generateDraft,
   applyFinding,
   reviewConceptSection,
+  reviewWholeConcept,
   suggestSectionRevision,
+  type ConceptReview,
   type SectionReview,
   type SuggestionView,
 } from "../../../../../packages/db/concepts";
@@ -199,6 +201,39 @@ export async function reviewSectionAction(
     return {
       ok: false,
       message: "Не вдалося перевірити секцію. Перевірте, чи запущено локальну модель.",
+    };
+  }
+}
+
+
+export type DocumentReviewResult =
+  | { ok: false; message: string }
+  | { ok: true; review: ConceptReview }
+  | null;
+
+/**
+ * Check the whole document at once.
+ *
+ * One button rather than eight, because a writer reads a concept note as one
+ * argument and wants to know what is wrong with it, not with paragraph four.
+ * It takes roughly six seconds a section on a local model, and the screen says
+ * so — a wait that is explained is a wait people sit through.
+ */
+export async function reviewDocumentAction(
+  _prev: DocumentReviewResult,
+  form: FormData,
+): Promise<DocumentReviewResult> {
+  const { organizationId } = await requireDb();
+  const grantId = String(form.get("grantId") ?? "");
+
+  try {
+    return { ok: true, review: await reviewWholeConcept(organizationId, grantId) };
+  } catch (err) {
+    if (err instanceof ConceptGenerationFailed) return { ok: false, message: err.message };
+    console.error("document review failed", err);
+    return {
+      ok: false,
+      message: "Не вдалося перевірити текст. Перевірте, чи запущено локальну модель.",
     };
   }
 }

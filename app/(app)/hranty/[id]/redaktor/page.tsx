@@ -11,7 +11,7 @@ import { FACT_KEYS } from "../../../../../packages/schemas/fact-registry";
 import { formatDateUk } from "../../../../../packages/schemas/locale-uk";
 import { AiNotice } from "../../../../components/beta";
 import { requireDb } from "../../../../lib/session";
-import { ConceptEditor } from "./editor";
+import { ConceptDocument, EmptyConcept } from "./document";
 
 export const dynamic = "force-dynamic";
 
@@ -97,24 +97,15 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
         extractionConfidence={entry.extractionConfidence}
       />
 
-      <ConceptEditor
-        grantId={id}
-        concept={concept}
-        allSections={CONCEPT_SECTIONS.map((s) => ({
-          key: s.key,
-          labelUk: s.labelUk,
-          promptUk: s.promptUk,
-        }))}
-        // What the generator was allowed to write from. Named on every section
-        // it produced, because a paragraph that will end up in an application
-        // has to be traceable to something the organization can check.
-        sources={{
-          answeredFacts,
-          totalFacts: FACT_KEYS.length,
-          criteria: entry.criteria.length,
-          donorDocs: concept?.donorDocsRead ?? 0,
-        }}
-      />
+      {/* One document, not eight cards. The per-section state it is built from
+          is unchanged — an unread AI draft is still a distinct thing from a
+          section a person has been through — but a concept note is read as one
+          argument, and boxing each paragraph hid whether the argument held. */}
+      {concept ? (
+        <ConceptDocument grantId={id} concept={concept} />
+      ) : (
+        <EmptyConcept grantId={id} />
+      )}
     </div>
   );
 }

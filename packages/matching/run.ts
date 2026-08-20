@@ -91,6 +91,15 @@ export async function matchOrganization(
   // Closed calls are excluded in the gate rather than the query, so the count
   // of what was filtered and why stays honest.
   const grantRows = await prisma.grant.findMany({
+    where: {
+      // Public calls, plus the ones this organization supplied itself. Donors
+      // mail PDFs, and a call that arrived in one NGO's inbox was never
+      // published anywhere — matching every organization against it would show
+      // them a competition they were not invited to and tell them who else is
+      // in it. `Grant` is a shared table, so the filter has to be written here
+      // rather than assumed from the scoped client.
+      OR: [{ ownerOrganizationId: null }, { ownerOrganizationId: organizationId }],
+    },
     include: { rules: { include: { citations: true } } },
     orderBy: { deadline: "asc" },
     take: opts.limit ?? 200,

@@ -70,6 +70,12 @@ function routesFor(orgName: string | null, isAdmin: boolean): Route[] {
       redirectsTo: orgName ? undefined : "/dzherela",
     },
     {
+      path: "/zayavky",
+      auth: true,
+      expect: orgName ? ["Над чим ви працюєте"] : undefined,
+      redirectsTo: orgName ? undefined : "/dzherela",
+    },
+    {
       path: "/dzherela",
       auth: true,
       expect: isAdmin ? ["Ресурсний центр ГУРТ", "Громадський Простір"] : undefined,

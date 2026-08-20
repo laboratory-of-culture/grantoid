@@ -475,6 +475,46 @@ export async function applyFinding(
   );
 }
 
+export type ConceptReview = {
+  /** Findings for every section, keyed by section. */
+  bySection: Record<string, Finding[]>;
+  /** Sections the model could not be reached for. Named, not swallowed. */
+  failed: string[];
+};
+
+/**
+ * Review the whole document in one pass.
+ *
+ * Sequential rather than parallel: one 4 GB card runs one model, and eight
+ * concurrent requests would queue inside Ollama anyway while making the failure
+ * modes harder to read. The wait is real — roughly six seconds a section — and
+ * the screen says so rather than pretending otherwise.
+ *
+ * A section that fails is named and the rest still return. A review that is
+ * all-or-nothing throws away seven good results because the eighth timed out.
+ */
+export async function reviewWholeConcept(
+  organizationId: string,
+  grantId: string,
+): Promise<ConceptReview> {
+  const view = await loadConcept(organizationId, grantId);
+  if (!view) throw new ConceptGenerationFailed("Чернетки ще немає.");
+
+  const bySection: Record<string, Finding[]> = {};
+  const failed: string[] = [];
+
+  for (const section of view.sections) {
+    try {
+      const result = await reviewConceptSection(organizationId, grantId, section.key);
+      bySection[section.key] = result.findings;
+    } catch {
+      failed.push(section.key);
+    }
+  }
+
+  return { bySection, failed };
+}
+
 /** A person rewrote a section. That is what takes it out of AI_DRAFT. */
 export async function editSection(
   organizationId: string,
