@@ -54,8 +54,11 @@ export async function GET(
     // Said in the file, not only on the screen. The document outlives the
     // session it was written in, and whoever opens it next did not see the
     // banner.
+    // No sentence-ending period after the date: formatDateUk already closes
+    // with «р.», and adding one printed «20 серпня 2026 р..» in a file people
+    // send to donors.
     `Чернетку підготовлено за допомогою Grant Assistant і прочитано людиною ` +
-      `${formatDateUk(concept.updatedAt)}. Перед подачею звірте цифри та умови ` +
+      `${formatDateUk(concept.updatedAt)} Перед подачею звірте цифри та умови ` +
       `з оригінальними документами донора.`,
     "",
   ].join("\n");

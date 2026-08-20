@@ -142,6 +142,48 @@ export function userPrompt(
   ].join("\n");
 }
 
+/** Whitespace, case and quote marks vary between the prompt and the echo. */
+function flatten(text: string): string {
+  return text
+    .replace(/[«»"'`‘’“”]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Did the model hand back its own instructions instead of writing?
+ *
+ * It does. Given the donor's guidelines — twelve thousand characters of English
+ * on top of a Ukrainian prompt — a 4B model with reasoning off stopped composing
+ * and copied the section specification into every one of the eight bodies. The
+ * draft saved, rendered, and offered itself for approval: a grant manager would
+ * have opened their concept note and found «Настанова: State the problem in the
+ * applicant's own region…» where their problem statement should be.
+ *
+ * Nothing caught it because the only test was non-empty, and an echo is not
+ * empty. This is D5 again — the prompt says write in Ukrainian prose, and the
+ * prompt saying so is not a mechanism. A section that repeats its own brief is
+ * treated exactly as a section that came back blank, because that is what it is.
+ */
+export function echoesInstructions(section: SectionDefinition, content: string): boolean {
+  const body = flatten(content);
+  if (body.length === 0) return true;
+
+  // The labels the specification is built from. Their presence is conclusive:
+  // they are ours, and no concept note written for a donor contains them.
+  if (/(^|\s)(питання|настанова|орієнтовний обсяг)\s*:/u.test(body)) return true;
+
+  if (body.includes(flatten(section.promptUk))) return true;
+
+  // A distinctive run of the guidance, long enough that prose cannot reproduce
+  // it by chance and short enough to survive the model paraphrasing the rest.
+  const guidance = flatten(section.guidance);
+  if (guidance.length >= 40 && body.includes(guidance.slice(0, 40))) return true;
+
+  return false;
+}
+
 export type ConceptRun = {
   result: ConceptDraftOutput | null;
   /** Keys asked for that came back empty or missing. */
@@ -188,9 +230,12 @@ export async function generateConcept(
   // Only keys that were asked for. A model that invents a section key would
   // otherwise create a row the editor has no definition for and cannot label.
   const asked = new Set(sections.map((s) => s.key));
-  const kept = completion.parsed.sections.filter(
-    (s) => asked.has(s.key) && s.content.trim().length > 0,
-  );
+  const definitionOf = new Map(sections.map((s) => [s.key, s]));
+  const kept = completion.parsed.sections.filter((s) => {
+    const definition = definitionOf.get(s.key);
+    if (!definition) return false;
+    return s.content.trim().length > 0 && !echoesInstructions(definition, s.content);
+  });
   const returned = new Set(kept.map((s) => s.key));
 
   return {

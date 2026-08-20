@@ -172,17 +172,40 @@ export async function generateDraft(
   // writes against the call.
   const donor = await donorMaterial(organizationId, grantId);
 
-  const run = await generateConcept(
-    toProfile(orgRow),
-    toGrant(grantRow),
-    wanted,
-    donor.text,
-  );
+  const profile = toProfile(orgRow);
+  const call = toGrant(grantRow);
+
+  const run = await generateConcept(profile, call, wanted, donor.text);
   if (!run.result) {
     throw new ConceptGenerationFailed(
       run.error ?? "модель не повернула чернетку. Спробуйте ще раз.",
     );
   }
+
+  // A second pass over whatever did not come back, asked for on its own.
+  //
+  // Length is what breaks this. Eight section briefs on top of twelve thousand
+  // characters of donor guidelines is where the model stopped writing and began
+  // copying its own instructions back — the failure `echoesInstructions` now
+  // rejects, which turns a bad draft into a missing one. Asking again for only
+  // the missing keys shortens the prompt by exactly the part that caused it,
+  // and the sections that did come back are not regenerated.
+  //
+  // One retry, not a loop: if a shorter prompt does not fix it, a shorter one
+  // still will not, and an organization waiting on a spinner should be told.
+  const written = [...run.result.sections];
+  if (run.missingSections.length > 0) {
+    const second = await generateConcept(profile, call, run.missingSections, donor.text);
+    if (second.result) written.push(...second.result.sections);
+  }
+
+  if (written.length === 0) {
+    throw new ConceptGenerationFailed(
+      "модель не написала жодної секції — повернула замість тексту власну інструкцію. " +
+        "Спробуйте ще раз; якщо повториться, приберіть частину документів донора.",
+    );
+  }
+  run.result.sections = written;
 
   const orderOf = new Map(CONCEPT_SECTIONS.map((s, i) => [s.key, i]));
   const now = new Date();
