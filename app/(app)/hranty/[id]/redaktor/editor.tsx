@@ -7,6 +7,7 @@ import type { ConceptView } from "../../../../../packages/db/concepts";
 import { SECTION_SOURCE_LABEL_UK } from "../../../../../packages/schemas/concept";
 import { NOUN_UK, countUk } from "../../../../../packages/schemas/locale-uk";
 import { Provenance } from "../../../../components/beta";
+import { SectionReview } from "./review";
 import {
   approveSectionAction,
   assistSectionAction,
@@ -265,6 +266,16 @@ function SectionCard({
               Переписування замінить лише те, чого ви не редагували — ця секція збережеться.
             </p>
           ) : null}
+
+          {/* Pointing before rewriting. A person who can see which four words
+              are the problem fixes them; a person handed a new paragraph has to
+              re-read and compare. The assistant stays for when the whole
+              section needs to change. */}
+          <SectionReview
+            grantId={grantId}
+            sectionKey={meta.key}
+            content={section.content}
+          />
 
           <Assistant grantId={grantId} sectionKey={meta.key} />
         </>

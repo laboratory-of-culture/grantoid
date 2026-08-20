@@ -7,7 +7,10 @@ import {
   approveSection,
   editSection,
   generateDraft,
+  applyFinding,
+  reviewConceptSection,
   suggestSectionRevision,
+  type SectionReview,
   type SuggestionView,
 } from "../../../../../packages/db/concepts";
 import {
@@ -160,6 +163,62 @@ export async function deleteDonorDocAction(
   } catch (err) {
     console.error("donor delete failed", err);
     return { ok: false, message: "Не вдалося видалити документ." };
+  }
+
+  revalidatePath(`/hranty/${grantId}/redaktor`);
+  return { ok: true };
+}
+
+
+export type ReviewResult =
+  | { ok: false; message: string }
+  | { ok: true; review: SectionReview }
+  | null;
+
+/**
+ * Check one section and return what is wrong with it.
+ *
+ * Saves nothing. The findings are pointers, and every one of them is a decision
+ * for the person who wrote the text — which is the difference between this and
+ * the assistant, and the reason it can run without asking permission first.
+ */
+export async function reviewSectionAction(
+  _prev: ReviewResult,
+  form: FormData,
+): Promise<ReviewResult> {
+  const { organizationId } = await requireDb();
+  const grantId = String(form.get("grantId") ?? "");
+  const sectionKey = String(form.get("sectionKey") ?? "");
+
+  try {
+    const review = await reviewConceptSection(organizationId, grantId, sectionKey);
+    return { ok: true, review };
+  } catch (err) {
+    if (err instanceof ConceptGenerationFailed) return { ok: false, message: err.message };
+    console.error("review failed", err);
+    return {
+      ok: false,
+      message: "Не вдалося перевірити секцію. Перевірте, чи запущено локальну модель.",
+    };
+  }
+}
+
+/** Replace one flagged span with what the finding suggested. */
+export async function applyFindingAction(
+  _prev: EditorResult,
+  form: FormData,
+): Promise<EditorResult> {
+  const { organizationId, user } = await requireDb();
+  const grantId = String(form.get("grantId") ?? "");
+  const sectionKey = String(form.get("sectionKey") ?? "");
+  const quote = String(form.get("quote") ?? "");
+  const replacement = String(form.get("replacement") ?? "");
+
+  try {
+    await applyFinding(organizationId, grantId, sectionKey, quote, replacement, user.userId);
+  } catch (err) {
+    if (err instanceof ConceptGenerationFailed) return { ok: false, message: err.message };
+    throw err;
   }
 
   revalidatePath(`/hranty/${grantId}/redaktor`);

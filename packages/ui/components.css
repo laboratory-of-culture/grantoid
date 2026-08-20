@@ -632,6 +632,37 @@ body {
   min-width: 0;
 }
 
+/* ------------------------------------------------------- writing review */
+
+/* A flagged span, marked the way a proofreader marks one: underlined, not
+ * filled. A fill would fight the text for attention across a whole paragraph,
+ * and the point is to keep the paragraph readable while saying where to look.
+ *
+ * `mark` defaults to a yellow background in every browser — reset it, or the
+ * design system loses to a user-agent stylesheet. */
+.flag {
+  background: transparent;
+  color: inherit;
+  border-bottom: var(--rule-weight) solid var(--color-neutral-500);
+  padding-bottom: var(--space-1);
+}
+
+/* Only the unsupported claim gets the accent. It is the one that reaches a
+ * funder as a statement of fact by the organization; the rest are prose. */
+.flag-unsupported { border-bottom-color: var(--color-accent-500); }
+.flag-off_topic { border-bottom-color: var(--color-neutral-700); }
+.flag-marketing,
+.flag-vague,
+.flag-long_sentence { border-bottom-color: var(--color-neutral-500); }
+
+/* The same distinction on the card, so a finding and its highlight are visibly
+ * the same object. */
+.flag-tag { background: var(--color-neutral-200); color: var(--color-neutral-800); }
+.flag-tag.flag-unsupported {
+  background: var(--color-state-problem-bg);
+  color: var(--color-state-problem-fg);
+}
+
 /* ------------------------------------------------------------------ media */
 
 /* Photographs are grayscale, never tinted. */

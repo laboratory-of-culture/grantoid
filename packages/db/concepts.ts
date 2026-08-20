@@ -13,6 +13,7 @@
 
 import { generateConcept } from "../../agents/concept";
 import { MAX_INSTRUCTION_CHARS, suggestRevision } from "../../agents/assistant";
+import { reviewSection } from "../../agents/reviewer";
 import { donorMaterial } from "./donor-docs";
 import { forOrganization, prisma } from "./tenancy";
 import {
@@ -22,6 +23,7 @@ import {
   unsupportedNumbers,
 } from "../schemas/concept";
 import { renderProfileText } from "../schemas/profile-text";
+import { ruleFindings, verifiedFindings, type Finding } from "../schemas/writing-checks";
 import { toGrant, toProfile } from "../matching/adapters";
 
 export type ConceptView = {
@@ -363,6 +365,114 @@ export async function suggestSectionRevision(
     ]),
     lengthDeltaPct: before === 0 ? 0 : Math.round(((after - before) / before) * 100),
   };
+}
+
+export type SectionReview = {
+  sectionKey: string;
+  findings: Finding[];
+  /** Spans the model claimed that are not in the text. Counted so it is visible. */
+  dropped: number;
+};
+
+/**
+ * Review one section: rules first, model second.
+ *
+ * The rules half needs no database, no model and no waiting, so it runs
+ * unconditionally and its findings are never lost to a model failure — if the
+ * runtime is down, the reviewer still catches the superlatives.
+ *
+ * Findings from both halves go through one verification gate, so the screen has
+ * a single guarantee to draw on: every highlight it renders exists in the text.
+ */
+export async function reviewConceptSection(
+  organizationId: string,
+  grantId: string,
+  key: string,
+  opts: { skipModel?: boolean } = {},
+): Promise<SectionReview> {
+  const db = forOrganization(organizationId);
+  const draft = await db.conceptDraft.findFirst({
+    where: { grantId },
+    include: { sections: true },
+  });
+  const section = draft?.sections.find((s) => s.key === key);
+  if (!draft || !section) {
+    throw new ConceptGenerationFailed("Цієї секції ще немає — спершу створіть чернетку.");
+  }
+
+  const fromRules = verifiedFindings(ruleFindings(section.content), section.content);
+  if (opts.skipModel) {
+    return { sectionKey: key, findings: fromRules, dropped: 0 };
+  }
+
+  const [orgRow, grantRow, donor] = await Promise.all([
+    prisma.organization.findUniqueOrThrow({
+      where: { id: organizationId },
+      include: { facts: { include: { citations: true } } },
+    }),
+    prisma.grant.findUniqueOrThrow({
+      where: { id: grantId },
+      include: { rules: { include: { citations: true } } },
+    }),
+    donorMaterial(organizationId, grantId),
+  ]);
+
+  const run = await reviewSection({
+    org: toProfile(orgRow),
+    grant: toGrant(grantRow),
+    sectionKey: key,
+    content: section.content,
+    donorText: donor.text,
+  });
+
+  // A model failure degrades the review to its rules half rather than failing
+  // it. Half a review is worth having; an error message instead of the
+  // superlatives it would have caught is not.
+  return {
+    sectionKey: key,
+    findings: [...fromRules, ...run.findings],
+    dropped: run.dropped,
+  };
+}
+
+/**
+ * Replace one span in a section.
+ *
+ * Goes through `editSection`, so applying a suggestion marks the section as the
+ * person's — which is true, because they read the finding and chose to accept
+ * it. Refuses when the span is no longer there: the text may have been edited in
+ * another tab since the review ran, and replacing the first thing that looks
+ * similar would silently corrupt someone's writing.
+ */
+export async function applyFinding(
+  organizationId: string,
+  grantId: string,
+  key: string,
+  quote: string,
+  replacement: string,
+  userId: string,
+): Promise<void> {
+  const db = forOrganization(organizationId);
+  const draft = await db.conceptDraft.findFirst({
+    where: { grantId },
+    include: { sections: true },
+  });
+  const section = draft?.sections.find((s) => s.key === key);
+  if (!draft || !section) throw new ConceptGenerationFailed("Секції не знайдено.");
+
+  if (!section.content.includes(quote)) {
+    throw new ConceptGenerationFailed(
+      "Текст змінився відколи виконувалася перевірка. Запустіть її ще раз.",
+    );
+  }
+
+  await editSection(
+    organizationId,
+    grantId,
+    key,
+    section.content.replace(quote, replacement),
+    userId,
+  );
 }
 
 /** A person rewrote a section. That is what takes it out of AI_DRAFT. */

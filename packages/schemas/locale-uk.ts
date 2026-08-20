@@ -66,3 +66,27 @@ export const NOUN_UK = {
   document: { one: "документ", few: "документи", many: "документів" },
   opportunity: { one: "можливість", few: "можливості", many: "можливостей" },
 } as const satisfies Record<string, PluralFormsUk>;
+
+/**
+ * Does this text say "there is nothing here"?
+ *
+ * Asked for a list or a suggestion, a model answers in prose rather than
+ * returning null: «Немає обов'язкових блокерів», «Ні», «Відсутні». Rendered as
+ * content, each of those becomes an item that says there are no items — the
+ * opposite of what it means.
+ *
+ * Shared because it has now been needed three times: the eligibility agent's
+ * blockers, its open questions, and the reviewer's suggestions.
+ *
+ * Word boundaries here are negative lookaheads, never the usual escape:
+ * JavaScript defines that one through ASCII word characters, which contain
+ * no Cyrillic at all. Fourth time this has mattered in this codebase.
+ */
+const EMPTY_SET_PROSE_UK =
+  /^\s*(немає|нема(?!\p{L})|ні(?!\p{L})|відсутн|не виявлено|не потрібно|жодн|none(?!\p{L})|no\s+(blockers|issues)|n\/?a|[-—–])/iu;
+
+export function isEmptySetProse(text: string | null | undefined): boolean {
+  const trimmed = text?.trim();
+  if (!trimmed) return true;
+  return EMPTY_SET_PROSE_UK.test(trimmed);
+}
