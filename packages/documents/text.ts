@@ -43,7 +43,13 @@ export async function extractText(
 
 async function extractPdf(bytes: Uint8Array): Promise<ExtractedText> {
   const { extractText: pdfText, getDocumentProxy } = await import("unpdf");
-  const pdf = await getDocumentProxy(bytes);
+  // A copy, because pdf.js *transfers* the buffer it is handed and leaves the
+  // caller holding a detached one. Reading a real donor PDF and then storing the
+  // file failed with «Cannot perform Construct on a detached ArrayBuffer», three
+  // lines after the read that caused it and with nothing in the message to
+  // connect them. Defended here rather than at each call site: the surprise
+  // belongs to this function, so the copy does too.
+  const pdf = await getDocumentProxy(new Uint8Array(bytes));
   const { text, totalPages } = await pdfText(pdf, { mergePages: true });
   return finish(text, totalPages);
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { Check, Pencil, RefreshCw, ScanText, Sparkles, X } from "lucide-react";
+import { Check, Download, Pencil, RefreshCw, ScanText, Sparkles, X } from "lucide-react";
 
 import type { ConceptView } from "../../../../../packages/db/concepts";
 import { SECTION_SOURCE_LABEL_UK } from "../../../../../packages/schemas/concept";
@@ -66,6 +66,13 @@ export function ConceptDocument({
 
   const reviewed = reviewState !== null && reviewState.ok;
 
+  // Counted from the sections themselves rather than from the draft status,
+  // which can lag a regeneration. This number decides whether the document may
+  // leave the product at all.
+  const unread = concept.sections.filter(
+    (s) => s.source === "AI_DRAFT" && s.approvedAt === null,
+  ).length;
+
   return (
     <div className="doc-shell">
       <article className="doc">
@@ -90,6 +97,27 @@ export function ConceptDocument({
               {reviewing ? "Перевіряємо…" : "Перевірити весь текст"}
             </button>
           </form>
+
+          {/* The download is the end of the work, so it sits with the review
+              rather than at the bottom of a long document. It refuses while any
+              section is an unread AI draft — a file is the moment we stop being
+              able to enforce anything, because once it is downloaded we have no
+              say in where it goes. */}
+          {unread === 0 ? (
+            <a
+              href={`/hranty/${grantId}/redaktor/eksport`}
+              className="btn btn-secondary btn-block"
+              download
+            >
+              <Download size={16} aria-hidden="true" />
+              Зберегти як файл
+            </a>
+          ) : (
+            <p className="field-hint">
+              Щоб зберегти концепцію файлом, прочитайте решту секцій:{" "}
+              <strong>{unread}</strong> ще позначені як чернетка AI.
+            </p>
+          )}
 
           {reviewing ? (
             <p className="field-hint">
@@ -184,8 +212,17 @@ function DocumentSection({
     <section className="doc-section" id={`section-${section.key}`}>
       <div className="doc-section-head">
         <h3 className="h3">{section.labelUk}</h3>
+        {/* The label and the colour have to agree. Printing the source column
+            straight through showed «Чернетка AI» in the colour that means done
+            on a section somebody had already approved — the word said one thing
+            and the colour the opposite, on the one distinction this editor is
+            built to keep visible. */}
         <span className={`tag ${isUnreadDraft ? "tag-state-unknown" : "tag-state-matched"}`}>
-          {SECTION_SOURCE_LABEL_UK[section.source]}
+          {isUnreadDraft
+            ? SECTION_SOURCE_LABEL_UK.AI_DRAFT
+            : section.approvedAt !== null && section.source === "AI_DRAFT"
+              ? "Прочитано"
+              : SECTION_SOURCE_LABEL_UK[section.source]}
         </span>
 
         <div className="doc-controls">

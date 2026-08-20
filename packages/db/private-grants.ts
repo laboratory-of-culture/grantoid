@@ -19,7 +19,7 @@ import { extractGrant } from "../../agents/extraction";
 import { extractText } from "../documents/text";
 import { MAX_ARTICLE_CHARS } from "../ingestion/article";
 import { documentStore } from "./documents";
-import { forOrganization, prisma } from "./tenancy";
+import { prisma } from "./tenancy";
 
 export class PrivateGrantFailed extends Error {}
 
@@ -99,7 +99,6 @@ export async function createGrantFromDocument(
   const g = run.result;
   const now = new Date();
   const contentHash = createHash("sha256").update(text).digest("hex");
-  const db = forOrganization(organizationId);
 
   // Same document twice is the same call, not a second one.
   const existing = await prisma.grant.findFirst({
@@ -110,63 +109,75 @@ export async function createGrantFromDocument(
     throw new PrivateGrantFailed("Цей документ уже завантажено — конкурс із нього вже створено.");
   }
 
-  const grant = await prisma.grant.create({
-    data: {
-      sourceId: null,
-      ownerOrganizationId: organizationId,
-      externalKey: `private:${contentHash.slice(0, 16)}`,
-      title: g.titleUk,
-      titleUk: g.titleUk,
-      donorName: g.donorName ?? "Донор не вказаний у документі",
-      sourceUrl: "",
-      applicationUrl: g.applicationUrl,
-      status: g.deadline ? "OPEN" : "UNKNOWN",
-      deadline: g.deadline ? new Date(g.deadline) : null,
-      deadlineIsKnown: g.deadline !== null,
-      fundingMin: g.fundingMin,
-      fundingMax: g.fundingMax,
-      currency: g.currency,
-      cofinancingRequired: g.cofinancingRequired,
-      applicantTypes: g.applicantTypes,
-      applicantGeography: g.applicantGeography,
-      sectors: g.sectors,
-      themes: [],
-      targetGroups: g.targetGroups,
-      extractionConfidence: run.confidence,
-      extractionNotes: run.notes.join("\n"),
-      contentHash,
-      retrievedAt: now,
-      lastCheckedAt: now,
-      rules: {
-        create: g.eligibility.map((rule, i) => ({
-          key: rule.resolvingFactKey?.replace(/_/g, "-") ?? `rule-${i}`,
-          text: rule.text,
-          textUk: rule.text,
-          kind: rule.kind,
-          orderIndex: i,
-          resolvingFactKey: rule.resolvingFactKey,
-          citations: { create: [{ quote: rule.quote, retrievedAt: now }] },
-        })),
-      },
-    },
-  });
-
-  // The file is kept and attached to the call it produced, so the terms the
-  // concept is written against stay readable rather than being summarised once
-  // and thrown away.
+  // The file first, then both rows together.
+  //
+  // Ordering learned the hard way: creating the grant and then storing the file
+  // left, when the store threw, a call with no document behind it — and the
+  // duplicate check then refused every retry, so the organization was stuck with
+  // an empty record it could not replace. An orphaned file is the cheaper
+  // failure: nothing points at it, and deleting the organization sweeps it.
   const stored = await documentStore().put(organizationId, input.filename, input.bytes);
-  await db.document.create({
-    data: {
-      kind: "CALL_GUIDELINES",
-      grantId: grant.id,
-      filename: input.filename,
-      storageKey: stored.key,
-      mimeType: input.mimeType,
-      sizeBytes: stored.sizeBytes,
-      pageCount,
-      contentHash,
-      extractedAt: now,
-    } as never,
+
+  const grant = await prisma.$transaction(async (tx) => {
+    const created = await tx.grant.create({
+      data: {
+        sourceId: null,
+        ownerOrganizationId: organizationId,
+        externalKey: `private:${contentHash.slice(0, 16)}`,
+        title: g.titleUk,
+        titleUk: g.titleUk,
+        donorName: g.donorName ?? "Донор не вказаний у документі",
+        sourceUrl: "",
+        applicationUrl: g.applicationUrl,
+        status: g.deadline ? "OPEN" : "UNKNOWN",
+        deadline: g.deadline ? new Date(g.deadline) : null,
+        deadlineIsKnown: g.deadline !== null,
+        fundingMin: g.fundingMin,
+        fundingMax: g.fundingMax,
+        currency: g.currency,
+        cofinancingRequired: g.cofinancingRequired,
+        applicantTypes: g.applicantTypes,
+        applicantGeography: g.applicantGeography,
+        sectors: g.sectors,
+        themes: [],
+        targetGroups: g.targetGroups,
+        extractionConfidence: run.confidence,
+        extractionNotes: run.notes.join("\n"),
+        contentHash,
+        retrievedAt: now,
+        lastCheckedAt: now,
+        rules: {
+          create: g.eligibility.map((rule, i) => ({
+            key: rule.resolvingFactKey?.replace(/_/g, "-") ?? `rule-${i}`,
+            text: rule.text,
+            textUk: rule.text,
+            kind: rule.kind,
+            orderIndex: i,
+            resolvingFactKey: rule.resolvingFactKey,
+            citations: { create: [{ quote: rule.quote, retrievedAt: now }] },
+          })),
+        },
+      },
+    });
+
+    // Attached to the call it produced, so the terms the concept is written
+    // against stay readable rather than being summarised once and discarded.
+    await tx.document.create({
+      data: {
+        organizationId,
+        kind: "CALL_GUIDELINES",
+        grantId: created.id,
+        filename: input.filename,
+        storageKey: stored.key,
+        mimeType: input.mimeType,
+        sizeBytes: stored.sizeBytes,
+        pageCount,
+        contentHash,
+        extractedAt: now,
+      },
+    });
+
+    return created;
   });
 
   await prisma.auditEntry.create({
