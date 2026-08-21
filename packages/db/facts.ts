@@ -211,3 +211,46 @@ export async function clearFact(
 
   await recomputeCompleteness(organizationId);
 }
+
+/**
+ * Give every organization a row for every registry key.
+ *
+ * Rows are created once, at registration, from the registry as it stood that
+ * day. Add a field afterwards — or rename one, which is the same thing — and
+ * every organization that already existed is missing it. Not as an UNKNOWN: as
+ * nothing at all, which `OrganizationProfile` rejects outright (D4 draws the
+ * line between an absent row and a stored UNKNOWN, and the validator enforces
+ * it). The symptom is matching failing for every existing organization while
+ * newly registered ones work, which reads like anything except a schema change.
+ *
+ * Found by renaming `annual_budget_eur` to `annual_budget_uah`: the nightly run
+ * built two feeds and then threw on the third organization.
+ *
+ * Idempotent and cheap — a count and, almost always, nothing to write. Runs at
+ * the head of the nightly chain so a deploy that adds a field repairs itself
+ * before anything reads a profile.
+ */
+export async function ensureFactRows(): Promise<{ organizations: number; added: number }> {
+  const organizations = await prisma.organization.findMany({
+    select: { id: true, facts: { select: { key: true } } },
+  });
+
+  let added = 0;
+  for (const org of organizations) {
+    const have = new Set(org.facts.map((f) => f.key));
+    const missing = FACT_KEYS.filter((key) => !have.has(key));
+    if (missing.length === 0) continue;
+
+    await prisma.organizationFact.createMany({
+      data: missing.map((key) => ({
+        organizationId: org.id,
+        key,
+        state: "UNKNOWN" as const,
+      })),
+      skipDuplicates: true,
+    });
+    added += missing.length;
+  }
+
+  return { organizations: organizations.length, added };
+}

@@ -19,6 +19,7 @@
  * nightly job; `build-feed.ts` remains the way to redo one of them by hand.
  */
 
+import { ensureFactRows } from "../packages/db/facts";
 import { classifyPending } from "../packages/ingestion/classify";
 import { extractPending } from "../packages/ingestion/extract";
 import { monitorDue } from "../packages/ingestion/monitor";
@@ -33,6 +34,16 @@ function seconds(ms: number): string {
 async function main(): Promise<void> {
   await checkRuntime();
   const started = Date.now();
+
+  // First, because everything downstream reads a profile and a profile with a
+  // missing registry row is rejected rather than defaulted. A deploy that adds
+  // a field would otherwise break matching for every organization that already
+  // existed, and only for those.
+  const rows = await ensureFactRows();
+  if (rows.added > 0) {
+    console.log(`— профілі: додано ${rows.added} порожніх рядків у ${rows.organizations} організацій
+`);
+  }
 
   console.log("— джерела");
   const monitored = await monitorDue();
