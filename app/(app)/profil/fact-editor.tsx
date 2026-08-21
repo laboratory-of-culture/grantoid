@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { Check, CircleMinus, Pencil, Undo2 } from "lucide-react";
 
+import { FormError, useFormErrorId } from "../../components/form-error";
 import { answerFactAction, clearFactAction, type ActionResult } from "./actions";
 import type { FactValueKind } from "../../../packages/schemas/fact-registry";
 
@@ -49,6 +50,8 @@ export function FactEditor(props: FactEditorProps) {
     if (answer?.ok) setOpen(false);
   }, [answer]);
 
+  const error = useFormErrorId(answer !== null && !answer.ok);
+
   const unknown = props.state === "UNKNOWN";
 
   if (!open) {
@@ -88,14 +91,10 @@ export function FactEditor(props: FactEditorProps) {
 
       <label className="field">
         <span className="field-label">{props.questionUk}</span>
-        <Control kind={props.kind} defaultValue={props.currentValue} />
+        <Control kind={props.kind} defaultValue={props.currentValue} describedBy={error.field} />
       </label>
 
-      {answer && !answer.ok ? (
-        <p className="field-error" role="alert">
-          {answer.message}
-        </p>
-      ) : null}
+      {answer && !answer.ok ? <FormError id={error.id}>{answer.message}</FormError> : null}
 
       <div className="row">
         <button type="submit" className="btn btn-primary" disabled={saving}>
@@ -131,9 +130,12 @@ export function FactEditor(props: FactEditorProps) {
 function Control({
   kind,
   defaultValue,
+  describedBy,
 }: {
   kind: FactValueKind;
   defaultValue: string | null;
+  /** `aria-describedby` and `aria-invalid`, or nothing when the form is clean. */
+  describedBy: Record<string, unknown>;
 }) {
   switch (kind) {
     case "BOOLEAN":
@@ -141,7 +143,7 @@ function Control({
       // that a no is stored as a confirmed negative rather than as the string
       // "ні" in a text field.
       return (
-        <select className="input" name="value" defaultValue="так">
+        <select className="input" name="value" defaultValue="так" {...describedBy}>
           <option value="так">Так</option>
         </select>
       );
@@ -153,6 +155,7 @@ function Control({
           type="date"
           name="value"
           defaultValue={defaultValue ?? ""}
+          {...describedBy}
         />
       );
 
@@ -165,6 +168,7 @@ function Control({
           name="value"
           defaultValue={defaultValue ?? ""}
           placeholder="12 500"
+          {...describedBy}
         />
       );
 
@@ -184,7 +188,13 @@ function Control({
     case "TEXT":
     default:
       return (
-        <input className="input" type="text" name="value" defaultValue={defaultValue ?? ""} />
+        <input
+          className="input"
+          type="text"
+          name="value"
+          defaultValue={defaultValue ?? ""}
+          {...describedBy}
+        />
       );
   }
 }

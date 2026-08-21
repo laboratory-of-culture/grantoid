@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { FileUp } from "lucide-react";
 
+import { FormError, useFormErrorId } from "../../components/form-error";
 import { createCallFromFileAction, type UploadCallResult } from "./actions";
 
 /**
@@ -21,6 +22,7 @@ export function UploadCall() {
     createCallFromFileAction,
     null,
   );
+  const error = useFormErrorId(state !== null && !state.ok);
 
   return (
     <section className="section">
@@ -34,11 +36,7 @@ export function UploadCall() {
         <strong>тільки ви</strong>: він не потрапляє до стрічок інших організацій.
       </p>
 
-      {state && !state.ok ? (
-        <p className="field-error" role="alert">
-          {state.message}
-        </p>
-      ) : null}
+      {state && !state.ok ? <FormError id={error.id}>{state.message}</FormError> : null}
 
       <form action={submit} className="row">
         <label className="field assistant-field">
@@ -49,6 +47,7 @@ export function UploadCall() {
             name="file"
             accept=".pdf,.docx,.doc,.txt"
             required
+            {...error.field}
           />
           <span className="field-hint">PDF, DOCX, DOC або TXT, до 20 МБ</span>
         </label>

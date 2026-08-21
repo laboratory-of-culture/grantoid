@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { UserPlus } from "lucide-react";
 
+import { FormError, useFormErrorId } from "../../components/form-error";
 import { registerAction, type AuthResult } from "../actions";
 // From constants, not password.ts: the latter imports node:crypto, and a client
 // component pulling a single number out of it drags Node's crypto surface into
@@ -12,6 +13,10 @@ import { MIN_PASSWORD_LENGTH } from "../../../packages/auth/constants";
 
 export default function RegisterPage() {
   const [state, action, pending] = useActionState<AuthResult, FormData>(registerAction, null);
+  // The action returns one message for the whole form, so every required field
+  // references it. A field-specific error would be better and needs the action
+  // to say which field — worth doing when there is a second reason to touch it.
+  const error = useFormErrorId(state !== null && !state.ok);
 
   return (
     <div className="auth-panel">
@@ -33,6 +38,7 @@ export default function RegisterPage() {
             required
             autoFocus
             placeholder="Громадська організація «Пороги»"
+            {...error.field}
           />
           <span className="field-hint">Як вона зазначена в реєстраційних документах</span>
         </label>
@@ -45,7 +51,14 @@ export default function RegisterPage() {
 
         <label className="field">
           <span className="field-label">Електронна пошта</span>
-          <input className="input" type="email" name="email" autoComplete="email" required />
+          <input
+            className="input"
+            type="email"
+            name="email"
+            autoComplete="email"
+            required
+            {...error.field}
+          />
         </label>
 
         <label className="field">
@@ -57,6 +70,7 @@ export default function RegisterPage() {
             autoComplete="new-password"
             required
             minLength={MIN_PASSWORD_LENGTH}
+            {...error.field}
           />
           <span className="field-hint">
             Щонайменше {MIN_PASSWORD_LENGTH} символів. Довга фраза надійніша за
@@ -64,11 +78,7 @@ export default function RegisterPage() {
           </span>
         </label>
 
-        {state && !state.ok ? (
-          <p className="field-error" role="alert">
-            {state.message}
-          </p>
-        ) : null}
+        {state && !state.ok ? <FormError id={error.id}>{state.message}</FormError> : null}
 
         <button type="submit" className="btn btn-primary btn-block" disabled={pending}>
           <UserPlus size={16} aria-hidden="true" />

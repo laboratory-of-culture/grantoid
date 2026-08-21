@@ -4,10 +4,15 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { LogIn } from "lucide-react";
 
+import { FormError, useFormErrorId } from "../../components/form-error";
 import { signInAction, type AuthResult } from "../actions";
 
 export default function SignInPage() {
   const [state, action, pending] = useActionState<AuthResult, FormData>(signInAction, null);
+  // Both fields point at the one error, because the message deliberately does
+  // not say which of them was wrong — telling an attacker whether an address is
+  // registered is worse than the small loss in precision.
+  const error = useFormErrorId(state !== null && !state.ok);
 
   return (
     <div className="auth-panel">
@@ -24,6 +29,7 @@ export default function SignInPage() {
             autoComplete="email"
             required
             autoFocus
+            {...error.field}
           />
         </label>
 
@@ -35,14 +41,11 @@ export default function SignInPage() {
             name="password"
             autoComplete="current-password"
             required
+            {...error.field}
           />
         </label>
 
-        {state && !state.ok ? (
-          <p className="field-error" role="alert">
-            {state.message}
-          </p>
-        ) : null}
+        {state && !state.ok ? <FormError id={error.id}>{state.message}</FormError> : null}
 
         <button type="submit" className="btn btn-primary btn-block" disabled={pending}>
           <LogIn size={16} aria-hidden="true" />
