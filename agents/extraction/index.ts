@@ -18,6 +18,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { complete, type CompleteOptions, type Usage } from "../../packages/llm/ollama";
+import { ukrainianOblast } from "../../packages/schemas/place";
 import { ExtractedGrant, ExtractedGrantShape } from "./output";
 
 export const TOOLS: readonly string[] = [];
@@ -98,6 +99,49 @@ export function extractionConfidence(grant: ExtractedGrant, truncated: boolean):
   // A page that was cut short may be missing fields that were actually there,
   // which is a different and worse kind of incomplete.
   return coverage * ANNOUNCEMENT_CEILING * (truncated ? 0.8 : 1);
+}
+
+/**
+ * Lists that came back in the wrong alphabet.
+ *
+ * The prompt asks for every label in Ukrainian and a 4B model does not reliably
+ * obey — the first live crawl produced `education`, `Active Play`, `energetyka`
+ * (a transliteration, which is neither language), and worst of all
+ * `Dnipropetrovsk | Zaporizhzhia | Mykolaiv | Odesa` out of an announcement that
+ * said «Дніпропетровська, Запорізька, Миколаївська, Одеська».
+ *
+ * The place names are the ones that cost something. Matching compares a call's
+ * geography against the organization's own, in Ukrainian, and refuses to compare
+ * across alphabets — so a transliterated oblast neither matches nor excludes
+ * anybody. It reads as a working record and behaves as an empty one.
+ *
+ * Reported rather than rewritten. Translating back is guesswork, and a
+ * transliteration guessed wrong is a place name pointing at the wrong region —
+ * worse than one visibly in the wrong script.
+ *
+ * Only when the source itself was Ukrainian. A call published in English is
+ * expected to yield English labels the model failed to translate, which is worth
+ * knowing but is a different, milder problem than inventing a Latin spelling for
+ * a Ukrainian oblast.
+ */
+function foreignLabelNote(grant: ExtractedGrant, article: string): string[] {
+  const cyrillic = (article.match(/\p{Script=Cyrillic}/gu) ?? []).length;
+  const latin = (article.match(/[A-Za-z]/g) ?? []).length;
+  if (cyrillic < latin) return [];
+
+  const labels = [
+    ...grant.sectors,
+    ...grant.applicantTypes,
+    ...grant.targetGroups,
+    ...grant.applicantGeography,
+  ];
+  const foreign = labels.filter((v) => /[A-Za-z]/.test(v) && !/\p{Script=Cyrillic}/u.test(v));
+  if (foreign.length === 0) return [];
+
+  return [
+    `${foreign.length} значень у списках залишилися не українською: ` +
+      `${foreign.slice(0, 4).join(", ")}${foreign.length > 4 ? "…" : ""}`,
+  ];
 }
 
 /** What was not read, in the words shown to an organization. */
@@ -326,6 +370,10 @@ export async function extractGrant(
     deadline,
     fundingMax,
     fundingMin,
+    // Oblasts restored to Ukrainian before anything stores them. The prompt
+    // asks for it; this is what makes it true. Only the closed set of
+    // administrative units is touched — a foreign place name passes through.
+    applicantGeography: grant.applicantGeography.map(ukrainianOblast),
   };
 
   // The model's own list is kept only for what no field covers. It was echoing
@@ -349,6 +397,7 @@ export async function extractGrant(
       ...(droppedRules.length > 0
         ? [`${droppedRules.length} правил відкинуто: цитати не знайдено на сторінці`]
         : []),
+      ...foreignLabelNote(result, article),
       origin === "donor-document"
         ? "прочитано документ донора; звіряйте з оригіналом перед подачею"
         : "умови донора (PDF/сайт) не читалися — перевірте оригінал оголошення",

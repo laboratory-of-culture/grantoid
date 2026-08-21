@@ -74,6 +74,24 @@ approximate; that flag may not.
 
 # Language
 
-`titleUk`, `summaryUk`, rule `text` and `notReadFromSource` in Ukrainian.
+**Everything you write is read by a Ukrainian grant manager, so write it in
+Ukrainian.** `titleUk`, `summaryUk`, rule `text`, `notReadFromSource`, and every
+list — `sectors`, `applicantTypes`, `targetGroups`, `applicantGeography`.
+
 `summaryUk` is two sentences a grant manager can scan: who funds it, who may
 apply, for what.
+
+`quote` is the single exception: it is evidence, copied character for character
+from the source, in whatever language the source used. A quote you translated is
+a quote nobody can verify.
+
+Translate a label from an English announcement rather than passing it through.
+`performing arts` is «виконавські мистецтва»; `non-profit organizations` is
+«неприбуткові організації». These are labels for reading, not quotations.
+
+**Place names in Ukrainian, always.** `Dnipropetrovsk` and `Zaporizhzhia` are
+Ukrainian oblasts written in a foreign alphabet: they came out of a Ukrainian
+announcement that said «Дніпропетровська» and «Запорізька». Never transliterate
+— it is not translation, it produces a name in neither language, and matching
+compares these against an organization's own Ukrainian geography. A place in the
+wrong alphabet matches nothing and excludes nothing.

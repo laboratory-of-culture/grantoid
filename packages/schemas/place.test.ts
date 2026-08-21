@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { formatOblast } from "./place";
+import { formatOblast, ukrainianOblast } from "./place";
 
 describe("formatOblast", () => {
   it("appends the word to a bare adjective", () => {
@@ -46,5 +46,33 @@ describe("formatOblast", () => {
     expect(formatOblast(null)).toBeNull();
     expect(formatOblast(undefined)).toBeNull();
     expect(formatOblast("   ")).toBeNull();
+  });
+});
+
+describe("ukrainianOblast", () => {
+  it("restores the oblasts a live extraction transliterated", () => {
+    // Verbatim from «Відкрийте мобільний дитячий садок у своїй громаді!», which
+    // kept producing these after the prompt was made explicit.
+    expect(ukrainianOblast("Dnipropetrovsk")).toBe("Дніпропетровська область");
+    expect(ukrainianOblast("Zaporizhzhia")).toBe("Запорізька область");
+    expect(ukrainianOblast("Mykolaiv")).toBe("Миколаївська область");
+    expect(ukrainianOblast("Odesa")).toBe("Одеська область");
+  });
+
+  it("reads the decorated forms too", () => {
+    expect(ukrainianOblast("Odesa Oblast")).toBe("Одеська область");
+    expect(ukrainianOblast("Kharkiv region")).toBe("Харківська область");
+  });
+
+  it("leaves Ukrainian alone", () => {
+    expect(ukrainianOblast("Чернівецька область")).toBe("Чернівецька область");
+    expect(ukrainianOblast("Буковина")).toBe("Буковина");
+  });
+
+  it("leaves a place that is not a Ukrainian oblast alone", () => {
+    // Forcing every Latin string through the table is how «Creative Europe
+    // countries» becomes an oblast.
+    expect(ukrainianOblast("Creative Europe countries")).toBe("Creative Europe countries");
+    expect(ukrainianOblast("Global")).toBe("Global");
   });
 });

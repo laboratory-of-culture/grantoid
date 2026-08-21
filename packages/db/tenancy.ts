@@ -63,7 +63,25 @@ const READS = new Set([
 const WRITES_MANY = new Set(["updateMany", "deleteMany"]);
 const CREATES = new Set(["create", "createMany"]);
 
-const base = new PrismaClient();
+/**
+ * One client per process, kept on `globalThis` across hot reloads.
+ *
+ * Without this, Next's dev server builds a new `PrismaClient` — and a new
+ * connection pool — every time this module is re-evaluated, which is every time
+ * any file it imports changes. The old pools are never closed. A working
+ * session reaches Postgres's default `max_connections` of 100 in an afternoon,
+ * and the symptom is not an error in the app: it is `FATAL: sorry, too many
+ * clients already` surfacing as database tests silently skipping and `psql`
+ * itself refusing to connect. That happened twice today before the cause was
+ * found.
+ *
+ * Harmless in production, where the module is evaluated once and the global is
+ * simply where the single client lives.
+ */
+const forHotReload = globalThis as typeof globalThis & { __prisma?: PrismaClient };
+
+const base = forHotReload.__prisma ?? new PrismaClient();
+if (process.env.NODE_ENV !== "production") forHotReload.__prisma = base;
 
 /** The unscoped client. Use only for shared data, migrations and seeds. */
 export const prisma = base;
