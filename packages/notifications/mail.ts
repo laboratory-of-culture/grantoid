@@ -23,6 +23,15 @@ export type Message = {
   subject: string;
   text: string;
   /**
+   * The laid-out version, sent alongside the text and never instead of it.
+   *
+   * `multipart/alternative`: the client picks, and anybody reading in a
+   * terminal or with styles off still gets the whole letter. Optional because
+   * the text version is the one this product guarantees — a transport that
+   * cannot send HTML loses formatting, not content.
+   */
+  html?: string;
+  /**
    * The one-click unsubscribe address, sent as a header as well as in the body.
    *
    * RFC 8058: mail clients surface a header unsubscribe as a native button, and
@@ -79,6 +88,7 @@ export class SmtpTransport implements MailTransport {
       to: message.to,
       subject: message.subject,
       text: message.text,
+      ...(message.html ? { html: message.html } : {}),
       headers: {
         "List-Unsubscribe": `<${message.unsubscribeUrl}>`,
         // Without this a client must assume the link needs a confirmation page.

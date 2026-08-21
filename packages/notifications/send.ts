@@ -11,6 +11,7 @@ import { randomBytes } from "node:crypto";
 import { loadFeed } from "../matching/feed";
 import { prisma } from "../db/tenancy";
 import { buildDigest, selectForDigest } from "./digest";
+import { renderDigestHtml } from "./html";
 import { mailTransport, type MailTransport } from "./mail";
 
 export const DIGEST_INTERVAL_DAYS = 7;
@@ -173,6 +174,7 @@ export async function sendDueDigests(
         to: user.email,
         subject: digest.subject,
         text: digest.text,
+        html: renderDigestHtml(digest, membership.organization.name),
         unsubscribeUrl: digest.unsubscribeUrl,
       });
 
