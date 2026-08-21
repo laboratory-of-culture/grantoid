@@ -65,3 +65,33 @@ describe("unreviewedSections", () => {
     ).toEqual([]);
   });
 });
+
+describe("unsupportedNumbers — magnitudes written as words", () => {
+  it("flags a population claim the sources do not support", () => {
+    // Verbatim from a live draft against a ГУРТ call. Chernivtsi oblast has
+    // about 890 000 people, and this was the concept note's first sentence.
+    const text =
+      "У Чернівцях та Чернівецькій області, де мешкають мільйони людей, " +
+      "існує проблема доступності культурної освіти.";
+    expect(unsupportedNumbers(text, ["Чернівецька область", "культурна спадщина"])).toEqual([
+      "мільйони людей",
+    ]);
+  });
+
+  it("leaves rhetoric alone", () => {
+    // The reason the check was digits-only to begin with. «тисячі років» counts
+    // years, not people, and firing on it is how a guard gets ignored.
+    expect(unsupportedNumbers("тисячі років спадщини Буковини", [])).toEqual([]);
+  });
+
+  it("accepts a magnitude the call itself states", () => {
+    const sources = ["Програма охопить десятки тисяч мешканців прифронтових громад."];
+    expect(unsupportedNumbers("Проєкт охопить тисячі мешканців громад.", sources)).toEqual([]);
+  });
+
+  it("counts money as well as people", () => {
+    expect(unsupportedNumbers("бюджет становитиме мільйони гривень", [])).toEqual([
+      "мільйони гривень",
+    ]);
+  });
+});

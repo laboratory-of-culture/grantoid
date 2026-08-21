@@ -143,13 +143,50 @@ export const SECTION_SOURCE_LABEL_UK: Record<SectionSource, string> = {
  * happened; naming it lets a grant manager replace it with the real figure,
  * which is the only person who knows it.
  *
- * Digits only. Spelled-out numerals are rarer in this register and much harder
- * to check, and a guard that fires on «тисячі років спадщини» would be ignored
- * within a week.
+ * Digits, plus magnitudes written as words *when they count people or money*.
+ *
+ * The narrow rule was deliberate: a guard that fires on rhetorical «тисячі
+ * років спадщини» gets ignored within a week, and that phrase is not a claim.
+ * Then a live draft opened with «у Чернівцях та Чернівецькій області, де
+ * мешкають мільйони людей» — an oblast of about 890 000, stated as fact in the
+ * first sentence a funder reads, and invisible to a check that only looked at
+ * digits.
+ *
+ * So a magnitude word is flagged only when a noun for people or money follows
+ * it closely. «Мільйони людей» is a claim; «тисячі років» is not.
  */
+/**
+ * A magnitude in words, followed closely by what it counts.
+ *
+ * Word boundaries as lookarounds, never the usual escape: JavaScript defines
+ * that one through ASCII word characters, which contain no Cyrillic at all, so
+ * it matches in the middle of every Ukrainian word. Fifth time in this codebase.
+ */
+const SPELLED_MAGNITUDE =
+  /(?<!\p{L})(десятк\p{L}*|сотн\p{L}*|тисяч\p{L}*|мільйон\p{L}*|мільярд\p{L}*)(?!\p{L})(?:\s+\p{L}+){0,2}\s+(люд\p{L}*|осіб|особ\p{L}*|мешканц\p{L}*|учасник\p{L}*|гривен\p{L}*|грн|євро|долар\p{L}*)(?!\p{L})/giu;
+
 export function unsupportedNumbers(text: string, sources: readonly string[]): string[] {
   const haystack = sources.join("\n").replace(/[\s '’ ]/g, "");
   const found = new Set<string>();
+
+  for (const match of text.matchAll(SPELLED_MAGNITUDE)) {
+    // The call or the profile may well say it — a donor writing «десятки тисяч
+    // мешканців» in its own guidelines is a supported figure, not an invention.
+    //
+    // Compared by stem, because Ukrainian inflects both halves: the source says
+    // «тисяч мешканців» and the draft says «тисячі мешканців», and a literal
+    // comparison would call the second one invented. Five characters is the
+    // same stem length the matching pre-filter settled on.
+    const stem = (w: string) => w.toLowerCase().slice(0, 5);
+    const magnitude = stem(match[1]!);
+    const counted = stem(match[2]!);
+    const supported = sources.some((src) => {
+      const low = src.toLowerCase();
+      return low.includes(magnitude) && low.includes(counted);
+    });
+    if (supported) continue;
+    found.add(match[0].replace(/\s+/g, " ").trim());
+  }
 
   for (const match of text.matchAll(/\d[\d\s'’ ]*\d|\d/g)) {
     const digits = match[0].replace(/[\s'’ ]/g, "");
