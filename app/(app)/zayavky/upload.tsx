@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { FileUp } from "lucide-react";
 
+import { Elapsed } from "../../components/elapsed";
 import { FormError, useFormErrorId } from "../../components/form-error";
 import { createCallFromFileAction, type UploadCallResult } from "./actions";
 
@@ -58,7 +59,9 @@ export function UploadCall() {
       </form>
 
       {pending ? (
-        <p className="field-hint">Модель працює локально — на документ іде близько хвилини.</p>
+        <p className="field-hint">
+          Модель працює локально. <Elapsed expectedSeconds={50} />
+        </p>
       ) : null}
     </section>
   );

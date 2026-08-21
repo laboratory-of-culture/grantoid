@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { Check, Download, Pencil, RefreshCw, ScanText, Sparkles, X } from "lucide-react";
 
+import { Elapsed } from "../../../../components/elapsed";
 import type { ConceptView } from "../../../../../packages/db/concepts";
 import { SECTION_SOURCE_LABEL_UK } from "../../../../../packages/schemas/concept";
 import { NOUN_UK, countUk } from "../../../../../packages/schemas/locale-uk";
@@ -130,7 +131,10 @@ export function ConceptDocument({
 
         <span className="doc-bar-end kicker">
           {reviewing
-            ? "модель читає секції по черзі"
+            ? // Measured at about a hundred seconds for eight sections. Without
+              // a clock this is indistinguishable from a hang, and the obvious
+              // response — reload — throws the work away.
+              null
             : reviewed
               ? total > 0
                 ? countUk(total, NOUN_UK.finding)
@@ -138,6 +142,7 @@ export function ConceptDocument({
               : unread > 0
                 ? `${countUk(unread, NOUN_UK.section)} ще не прочитано`
                 : ""}
+          {reviewing ? <Elapsed expectedSeconds={100} /> : null}
         </span>
       </div>
 
@@ -540,7 +545,13 @@ export function EmptyConcept({ grantId }: { grantId: string }) {
           {generating ? "Пишемо чернетку…" : "Створити чернетку концепції"}
         </button>
       </form>
-      <p className="field-hint">Це займає близько хвилини — модель працює локально.</p>
+      <p className="field-hint">
+        {generating ? (
+          <Elapsed expectedSeconds={70} />
+        ) : (
+          "Це займає близько хвилини — модель працює локально."
+        )}
+      </p>
     </div>
   );
 }

@@ -867,6 +867,18 @@ body {
   .suggestion { left: auto; right: 0; }
 }
 
+/* Elapsed time on an operation that blocks for a minute or more.
+ *
+ * Its own class rather than a bare span: the number has to be tabular so the
+ * seconds do not shift the text beside them every tick, which is the small
+ * jitter that makes a waiting screen feel broken. */
+.elapsed {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ------------------------------------------------------------------ media */
 
 /* Photographs are grayscale, never tinted. */
