@@ -132,11 +132,26 @@ export const FACT_REGISTRY: readonly FactDefinition[] = [
     documentEvidencePossible: true,
   },
   {
-    key: "annual_budget_eur",
+    /**
+     * Hryvnia, and the key says so.
+     *
+     * It used to be `annual_budget_eur` while the question said only «Який
+     * приблизний річний бюджет організації?» — no currency anywhere a person
+     * could see it. A Ukrainian NGO answers that in hryvnia, its annual report
+     * states it in hryvnia, and the extractor duly pulled «3 480 000» out of a
+     * sentence ending «гривень» and filed it as euro. That is a forty-fold
+     * overstatement handed to the eligibility agent as a fact about the
+     * organization, against calls whose thresholds are written in euro.
+     *
+     * No conversion here. A rate we invented would be a number nobody can cite,
+     * which is the failure this product is built to refuse; the currency is
+     * stated instead and the reader does the arithmetic.
+     */
+    key: "annual_budget_uah",
     group: "CAPACITY",
     kind: "NUMBER",
-    labelUk: "Річний бюджет",
-    questionUk: "Який приблизний річний бюджет організації?",
+    labelUk: "Річний бюджет, грн",
+    questionUk: "Який приблизний річний бюджет організації у гривнях?",
     documentEvidencePossible: true,
   },
   {

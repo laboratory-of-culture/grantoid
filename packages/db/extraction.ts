@@ -15,6 +15,26 @@ import { prisma, type ScopedClient } from "./tenancy";
 
 export class ExtractionFailed extends Error {}
 
+/**
+ * A page number the document actually has, or none.
+ *
+ * The model reports the page it read a quote from, and it guesses. A two-page
+ * annual report came back with three facts cited to «с. 4» — a page that does
+ * not exist, printed beside a verbatim quote that did, on the one screen whose
+ * entire claim is that every fact carries where it came from. A citation nobody
+ * checked is a citation that can be invented; this is the same rule the grant
+ * extractor applies to its quotes, applied to the other half of the reference.
+ *
+ * Dropping the number rather than the fact: the quote is checked separately and
+ * is the stronger evidence. «Ми не знаємо, на якій сторінці» is honest and
+ * still useful. «Сторінка 4» of a two-page file is neither.
+ */
+export function citedPage(page: number | null, pageCount: number | null): number | null {
+  if (page === null || !Number.isInteger(page) || page < 1) return null;
+  if (pageCount !== null && page > pageCount) return null;
+  return page;
+}
+
 export type ExtractionSummary = {
   documentId: string;
   proposed: number;
@@ -79,6 +99,7 @@ export async function extractDocumentFacts(
   });
 
   if (run.facts.length > 0) {
+    const pages = pageCount ?? doc.pageCount;
     const data: Prisma.FactCandidateCreateManyInput[] = run.facts.map((f) => ({
       organizationId: doc.organizationId,
       documentId: doc.id,
@@ -86,7 +107,7 @@ export async function extractDocumentFacts(
       state: f.state,
       valueText: f.valueText,
       quote: f.quote,
-      page: f.page,
+      page: citedPage(f.page, pages),
       confidence: f.confidence,
     }));
     await prisma.factCandidate.createMany({ data });

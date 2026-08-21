@@ -49,7 +49,7 @@ Available profile fields for `resolvingFactKey`:
 
 `legal_form`, `edrpou`, `non_profit_status`, `registration_date`,
 `registration_oblast`, `activity_areas`, `sectors`, `is_publisher`,
-`geographic_coverage`, `target_audiences`, `team_size`, `annual_budget_eur`,
+`geographic_coverage`, `target_audiences`, `team_size`, `annual_budget_uah`,
 `cofinancing_capacity`, `international_partners`,
 `international_project_experience`, `previous_grants`, `previous_donors`,
 `reporting_language_en`.

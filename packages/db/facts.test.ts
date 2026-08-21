@@ -8,6 +8,7 @@
  */
 
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { citedPage } from "./extraction";
 
 import { answerFact, clearFact, AnswerRejected } from "./facts";
 import { forOrganization, prisma } from "./tenancy";
@@ -67,8 +68,8 @@ describe.runIf(reachable)("answerFact", () => {
   });
 
   it("accepts a number written the way Ukrainians write it", async () => {
-    await answerFact(db, ORG, { key: "annual_budget_eur", value: "12 500,50" }, "u1");
-    expect((await factFor("annual_budget_eur"))?.valueText).toBe("12500.5");
+    await answerFact(db, ORG, { key: "annual_budget_uah", value: "12 500,50" }, "u1");
+    expect((await factFor("annual_budget_uah"))?.valueText).toBe("12500.5");
   });
 
   it("splits a list on newlines and keeps the items", async () => {
@@ -157,5 +158,29 @@ describe.runIf(reachable)("clearFact", () => {
     await answerFact(db, ORG, { key: "is_publisher", negative: true }, "u1");
     await clearFact(db, ORG, "is_publisher", "u1");
     expect((await factFor("is_publisher"))?.state).toBe("UNKNOWN");
+  });
+});
+
+describe("citedPage", () => {
+  it("drops a page the document does not have", () => {
+    // Real: a two-page annual report came back with three facts cited to page 4.
+    expect(citedPage(4, 2)).toBeNull();
+  });
+
+  it("keeps a page within the document", () => {
+    expect(citedPage(2, 2)).toBe(2);
+    expect(citedPage(1, 33)).toBe(1);
+  });
+
+  it("drops nonsense and keeps absence", () => {
+    expect(citedPage(0, 5)).toBeNull();
+    expect(citedPage(-1, 5)).toBeNull();
+    expect(citedPage(null, 5)).toBeNull();
+  });
+
+  it("keeps the page when the document's length is unknown", () => {
+    // A .txt has no pages to count. The model's number is the only thing there
+    // is, and dropping it would lose a reference that may well be right.
+    expect(citedPage(3, null)).toBe(3);
   });
 });

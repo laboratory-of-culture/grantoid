@@ -99,4 +99,4 @@ facts:
     valueBoolean: true
 
 # Deliberately absent, therefore UNKNOWN:
-#   annual_budget_eur, cofinancing_capacity, edrpou
+#   annual_budget_uah, cofinancing_capacity, edrpou
