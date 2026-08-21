@@ -71,6 +71,16 @@ export class FileTransport implements MailTransport {
       ].join("\n"),
       "utf8",
     );
+
+    // The laid-out version beside it, as a file a browser opens.
+    //
+    // Not optional politeness: this is the default transport, so without it the
+    // only version anybody can actually look at during trial operation is the
+    // plain text — and reading HTML markup in a terminal tells you nothing
+    // about whether the letter looks right.
+    if (message.html) {
+      await writeFile(path.join(this.dir, `${stamp}-${safe}.html`), message.html, "utf8");
+    }
   }
 }
 
