@@ -55,6 +55,20 @@ async function dump(label: string, path: string, token: string | null): Promise<
   console.log(toText(await res.text()));
 }
 
+/**
+ * A token that really exists, so the good path is checked as well as the bad.
+ *
+ * The two states looked identical until a read-through caught it, and a screen
+ * that says the same thing whatever happened is one nobody can trust.
+ */
+async function validToken(): Promise<string> {
+  const user = await prisma.user.findFirst({
+    where: { unsubscribeToken: { not: null } },
+    select: { unsubscribeToken: true },
+  });
+  return user?.unsubscribeToken ?? "none-issued-yet";
+}
+
 async function main(): Promise<void> {
   const ngo = await tokenFor("laboratoryofculture@gmail.com");
   const admin = await tokenFor("admin@grant-assistant.local");
@@ -71,6 +85,8 @@ async function main(): Promise<void> {
   await dump("ВІДПИСКА (поганий токен)", "/vidpyska?t=nonsense", null);
   await dump("ПРОФІЛЬ", "/profil", ngo);
   await dump("СТРІЧКА", "/mozhlyvosti", ngo);
+  await dump("ЗАЯВКИ", "/zayavky", ngo);
+  await dump("ВІДПИСКА (дійсний токен)", "/vidpyska?t=" + (await validToken()), null);
   await dump("ГРАНТ", `/hranty/${gid}`, ngo);
   await dump("РЕДАКТОР", `/hranty/${gid}/redaktor`, ngo);
   await dump("ДЖЕРЕЛА (адмін)", "/dzherela", admin);
