@@ -20,7 +20,8 @@
     "fixtures:check": "tsx evals/check-fixtures.ts",
     "eval": "tsx evals/run-eval.ts",
     "audit:tokens": "node scripts/audit-tokens.mjs",
-    "digest": "tsx scripts/send-digests.ts"
+    "digest": "tsx scripts/send-digests.ts",
+    "nightly": "tsx scripts/nightly.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",

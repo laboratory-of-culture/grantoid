@@ -1,0 +1,89 @@
+/**
+ * The whole nightly chain, in the order it has to happen.
+ *
+ *   npx tsx scripts/nightly.ts
+ *
+ * Four steps existed and no way to run them together: monitoring found items,
+ * classification judged them, extraction turned the survivors into calls, and
+ * matching assessed the calls against each organization. Every one had its own
+ * script, which is fine for debugging one stage and useless as the thing a cron
+ * entry points at — and `docs/DEPLOY.md` tells an operator to schedule exactly
+ * this. Running them out of order silently does nothing: classification with
+ * nothing discovered examines zero items and reports success.
+ *
+ * Sequential and one at a time on purpose. Both source portals are small, the
+ * politeness budget is per host, and the model serves one request at a time
+ * anyway — parallelism here buys nothing and costs goodwill.
+ *
+ * Every organization gets a feed, not just the demo one. That is the actual
+ * nightly job; `build-feed.ts` remains the way to redo one of them by hand.
+ */
+
+import { classifyPending } from "../packages/ingestion/classify";
+import { extractPending } from "../packages/ingestion/extract";
+import { monitorDue } from "../packages/ingestion/monitor";
+import { checkRuntime } from "../packages/llm/ollama";
+import { prisma } from "../packages/db/tenancy";
+import { matchOrganization } from "../packages/matching/run";
+
+function seconds(ms: number): string {
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+async function main(): Promise<void> {
+  await checkRuntime();
+  const started = Date.now();
+
+  console.log("— джерела");
+  const monitored = await monitorDue();
+  if (monitored.length === 0) {
+    console.log("  жодне джерело не настало за розкладом");
+  }
+  for (const m of monitored) {
+    console.log(
+      `  ${m.sourceName.padEnd(24)} знайдено ${m.found}, нових ${m.added}, змінених ${m.changed}` +
+        `  ${seconds(m.durationMs)}${m.error ? `  ПОМИЛКА: ${m.error}` : ""}`,
+    );
+  }
+
+  console.log("\n— класифікація");
+  const classified = await classifyPending(200);
+  console.log(
+    `  оглянуто ${classified.examined}, гранти ${classified.grants}, не гранти ${classified.rejected}, ` +
+      // Deferred is the one worth reading: the classifier was not confident
+      // enough to decide, so the item stays NEW and comes back tomorrow. A
+      // number that only grows means the rules need a case they do not cover.
+      `відкладено ${classified.deferred}, помилок ${classified.failed}` +
+      `  (правилами ${classified.byRule}, моделлю ${classified.byAgent})  ${seconds(classified.durationMs)}`,
+  );
+
+  console.log("\n— витягування конкурсів");
+  const extracted = await extractPending(50);
+  console.log(
+    `  оглянуто ${extracted.examined}, створено ${extracted.extracted}, ` +
+      `відхилено ${extracted.rejected}, помилок ${extracted.failed}  ${seconds(extracted.durationMs)}`,
+  );
+
+  console.log("\n— стрічки організацій");
+  const organizations = await prisma.organization.findMany({
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+  for (const org of organizations) {
+    const outcome = await matchOrganization(org.id, { limit: 200 });
+    console.log(
+      `  ${org.name}\n    кандидатів ${outcome.candidates}, відсіяно без моделі ${outcome.filtered}, ` +
+        `повторно ${outcome.reused}, оцінено ${outcome.assessed}, помилок ${outcome.failed}, ` +
+        `рекомендовано ${outcome.recommended}  ${seconds(outcome.durationMs)}`,
+    );
+  }
+
+  console.log(`\nразом ${seconds(Date.now() - started)}`);
+}
+
+main()
+  .catch((err) => {
+    console.error(String(err));
+    process.exit(1);
+  })
+  .finally(() => prisma.$disconnect());
