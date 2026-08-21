@@ -668,13 +668,21 @@ model Match {
   inputTokens        Int?
   outputTokens       Int?
   latencyMs          Int?
-  grantContentHash   String
+  /// sha256 of what the matcher actually reads of the call — its extracted
+  /// fields and its rules, not the page they came from.
+  ///
+  /// It used to hash the source article, and the two are not the same thing:
+  /// re-reading an unchanged page under a better prompt produces different
+  /// fields under an identical article hash, so every verdict was reused and
+  /// the improvement never reached anybody's feed. Found after a re-extraction
+  /// fixed four oblasts and changed nothing on screen.
+  grantInputHash     String
   profileVersionHash String
 
   assessments CriterionAssessment[]
   computedAt  DateTime              @default(now())
 
-  @@unique([organizationId, grantId, promptFingerprint, grantContentHash, profileVersionHash])
+  @@unique([organizationId, grantId, promptFingerprint, grantInputHash, profileVersionHash])
   @@index([organizationId, recommend, overall])
 }
 

@@ -197,3 +197,40 @@ export function profileVersionHash(profile: OrganizationProfile): string {
 
   return createHash("sha256").update(material).digest("hex");
 }
+
+/**
+ * What the matcher sees of a call, hashed.
+ *
+ * The reuse key for a verdict, and it has to cover the inputs rather than their
+ * source. It used to be the sha of the announcement text, on the reasoning that
+ * an unchanged page means an unchanged call — which is true of the page and
+ * false of the record. Re-reading the same announcement under a corrected
+ * prompt produced different geography, different sectors and different rules
+ * under an identical article hash, so every verdict was reused and the
+ * correction never reached a feed. Four oblasts were fixed and nothing on
+ * screen moved.
+ *
+ * Hashing `toGrant` output plus the rules means the key changes exactly when
+ * something the eligibility agent reads changes, and not when the page is
+ * merely re-crawled.
+ */
+export function grantInputHash(row: GrantRow): string {
+  const grant = toGrant(row);
+  return createHash("sha256")
+    .update(
+      JSON.stringify([
+        grant.status,
+        grant.deadline,
+        grant.deadlineIsKnown,
+        grant.funding,
+        grant.applicantTypes,
+        grant.applicantGeography,
+        grant.sectors,
+        grant.themes,
+        grant.targetGroups,
+        grant.applicationLanguage,
+        grant.eligibility.map((r) => [r.key, r.kind, r.textUk ?? r.text, r.resolvingFactKey]),
+      ]),
+    )
+    .digest("hex");
+}

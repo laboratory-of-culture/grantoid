@@ -14,7 +14,7 @@
 import { assess } from "../../agents/eligibility";
 import { forOrganization, prisma } from "../db/tenancy";
 import { shouldRecommend } from "../schemas/ladder";
-import { profileVersionHash, toGrant, toProfile } from "./adapters";
+import { grantInputHash, profileVersionHash, toGrant, toProfile } from "./adapters";
 import { prefilter, type FilterableGrant, type FilterableOrganization } from "./prefilter";
 
 export type MatchOutcome = {
@@ -141,13 +141,16 @@ export async function matchOrganization(
       continue;
     }
 
-    // A verdict is reusable only when the prompt, the grant text and the profile
-    // are all the ones that produced it. The unique key enforces the same thing
-    // at the database level; this check is what avoids paying for the call.
+    // A verdict is reusable only when the prompt, the call's own fields and the
+    // profile are all the ones that produced it. Not the announcement text: the
+    // page can be identical while what we read out of it is not. The unique key
+    // enforces the same thing at the database level; this check is what avoids
+    // paying for the call.
+    const inputHash = grantInputHash(grantRow);
     const existing = await db.match.findFirst({
       where: {
         grantId: grantRow.id,
-        grantContentHash: grantRow.contentHash,
+        grantInputHash: inputHash,
         profileVersionHash: versionHash,
       },
       select: { id: true, recommend: true },
@@ -218,7 +221,7 @@ export async function matchOrganization(
           inputTokens: run.usage.promptTokens,
           outputTokens: run.usage.outputTokens,
           latencyMs: run.usage.latencyMs,
-          grantContentHash: grantRow.contentHash,
+          grantInputHash: inputHash,
           profileVersionHash: versionHash,
           assessments: {
             create: assessments.map((c) => ({
