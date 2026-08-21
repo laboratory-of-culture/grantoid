@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Check, CircleMinus, Pencil, Undo2 } from "lucide-react";
 
 import { answerFactAction, clearFactAction, type ActionResult } from "./actions";
@@ -35,6 +35,19 @@ export function FactEditor(props: FactEditorProps) {
     clearFactAction,
     null,
   );
+
+  // Close on a successful save, and only then.
+  //
+  // Without this the panel stayed open beside the value it had just written:
+  // the row on the left already read «так», the counter had gone from 1/4 to
+  // 2/4, and an armed «Зберегти» sat next to both. Nothing on screen said
+  // whether the answer had been recorded, and the obvious response — press it
+  // again — is the one that makes a person doubt the first press worked.
+  //
+  // A failed save keeps the panel open, because the error message lives in it.
+  useEffect(() => {
+    if (answer?.ok) setOpen(false);
+  }, [answer]);
 
   const unknown = props.state === "UNKNOWN";
 
