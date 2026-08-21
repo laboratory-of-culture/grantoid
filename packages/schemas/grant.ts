@@ -28,6 +28,28 @@ export const GrantStatus = z.enum(["OPEN", "CLOSED", "UPCOMING", "UNKNOWN"]);
 export type GrantStatus = z.infer<typeof GrantStatus>;
 
 /**
+ * The status a deadline implies.
+ *
+ * Written here because three call sites had each written `deadline ? "OPEN" :
+ * "UNKNOWN"` separately, and all three were wrong in the same way: a date that
+ * has passed made a call OPEN. The first live crawl stored a competition that
+ * closed in September 2023 and one that closed in August 2024, both as open.
+ *
+ * The feed never showed them — the pre-filter excludes a passed deadline before
+ * anything reaches a model — but a stored status that contradicts a stored date
+ * is a fact the database is wrong about, and the next reader has no reason to
+ * distrust it.
+ *
+ * UPCOMING is deliberately unreachable from here: it needs an opening date, and
+ * nothing extracts one. Guessing it from a distant deadline would be inventing
+ * a fact, which is the failure this product exists to avoid.
+ */
+export function statusForDeadline(deadline: Date | null, now: Date = new Date()): GrantStatus {
+  if (deadline === null) return "UNKNOWN";
+  return deadline.getTime() < now.getTime() ? "CLOSED" : "OPEN";
+}
+
+/**
  * Funding terms.
  *
  * `cofinancingRequired: null` means the call was not read on this point — not

@@ -78,3 +78,23 @@ describe("classifyByRule — deferred to the agent", () => {
     expect(classifyByRule("Підтримка ініціатив ОГС у прифронтових громадах")).toBeNull();
   });
 });
+
+describe("titles the first live crawl got wrong", () => {
+  it("refuses a competition to purchase", () => {
+    // Reached the grant table at 64% confidence. The organization running it is
+    // buying a solar power station, not funding anyone.
+    expect(classifyByRule("Конкурс на закупівлю соняної електростанції")).toEqual({
+      status: "NOT_GRANT",
+      note: "конкурс на закупівлю — організація тут покупець, а не отримувач",
+    });
+  });
+
+  it("still accepts a competition that funds something", () => {
+    // ГУРТ's own rubric settles it without a model call — which is exactly why
+    // the label is left on the title until extraction.
+    expect(classifyByRule("КОНКУРС Конкурс проєктів для громадських організацій")).toEqual({
+      status: "GRANT",
+      note: "ГУРТ позначив як КОНКУРС",
+    });
+  });
+});

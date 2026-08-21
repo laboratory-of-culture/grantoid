@@ -28,6 +28,17 @@ export type RuleVerdict = {
  * Every rule here would have silently failed, and the tests are what said so.
  */
 const LEADING: { pattern: RegExp; status: "GRANT" | "NOT_GRANT"; note: string }[] = [
+  // Before the taxonomy markers, because it is the more specific reading of the
+  // same word. «Конкурс на закупівлю соняної електростанції» is real: the
+  // leading «конкурс» matched the marker below, the item was filed as a grant
+  // without a model ever seeing it, and it reached the grant table at 64%.
+  // A competition to *buy* something puts the organization on the paying side.
+  {
+    pattern: /^конкурс\s+(на|з)\s+закупівл/iu,
+    status: "NOT_GRANT",
+    note: "конкурс на закупівлю — організація тут покупець, а не отримувач",
+  },
+
   // ГУРТ's own taxonomy.
   { pattern: /^грант(?!\p{L})/iu, status: "GRANT", note: "ГУРТ позначив як ГРАНТ" },
   { pattern: /^конкурс(?!\p{L})/iu, status: "GRANT", note: "ГУРТ позначив як КОНКУРС" },

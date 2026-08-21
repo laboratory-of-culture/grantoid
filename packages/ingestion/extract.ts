@@ -20,6 +20,8 @@ import { createHash } from "node:crypto";
 import { extractGrant } from "../../agents/extraction";
 import { articleText } from "./article";
 import { politeFetch } from "./fetch";
+import { stripRubric } from "./discover";
+import { statusForDeadline } from "../schemas/grant";
 import { prisma } from "../db/tenancy";
 
 export type ExtractionOutcome = {
@@ -89,7 +91,15 @@ async function extractOne(item: {
   }
 
   const article = articleText(response.body);
-  const run = await extractGrant(article.text, item.url, item.title, article.truncated);
+  // The portal's rubric label comes off here and not before: the classifier
+  // needed it, this agent does not, and leaving it on made the model echo
+  // «ГРАНТ Гранти на розвиток…» into the stored title of the call.
+  const run = await extractGrant(
+    article.text,
+    item.url,
+    stripRubric(item.title),
+    article.truncated,
+  );
 
   if (!run.result) {
     await prisma.sourceItem.update({
@@ -134,7 +144,7 @@ async function extractOne(item: {
       donorName: g.donorName ?? item.source.name,
       sourceUrl: item.url,
       applicationUrl: g.applicationUrl,
-      status: g.deadline ? "OPEN" : "UNKNOWN",
+      status: statusForDeadline(g.deadline ? new Date(g.deadline) : null),
       deadline: g.deadline ? new Date(g.deadline) : null,
       deadlineIsKnown: g.deadline !== null,
       fundingMin: g.fundingMin,
@@ -173,7 +183,7 @@ async function extractOne(item: {
       titleUk: g.titleUk,
       donorName: g.donorName ?? item.source.name,
       applicationUrl: g.applicationUrl,
-      status: g.deadline ? "OPEN" : "UNKNOWN",
+      status: statusForDeadline(g.deadline ? new Date(g.deadline) : null),
       deadline: g.deadline ? new Date(g.deadline) : null,
       deadlineIsKnown: g.deadline !== null,
       fundingMin: g.fundingMin,

@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { DiscoveryFailed, parseHtmlList, parseRss } from "./discover";
+import { DiscoveryFailed, parseHtmlList, parseRss, stripRubric } from "./discover";
 
 /** Shaped after the Громадський Простір post-type feed. */
 const RSS = `<?xml version="1.0" encoding="UTF-8"?>
@@ -99,5 +99,30 @@ describe("parseHtmlList", () => {
 
   it("decodes entities here too", () => {
     expect(items[1]?.title).toContain("комп’ютерної");
+  });
+});
+
+describe("stripRubric", () => {
+  it("drops the portal's section label", () => {
+    // Both taken from the live ГУРТ listing.
+    expect(stripRubric("ГРАНТ Гранти на розвиток адаптивного спорту для ветеранів")).toBe(
+      "Гранти на розвиток адаптивного спорту для ветеранів",
+    );
+    expect(stripRubric("КОНКУРС Відкрийте мобільний дитячий садок у своїй громаді!")).toBe(
+      "Відкрийте мобільний дитячий садок у своїй громаді!",
+    );
+  });
+
+  it("keeps a first word that is part of the sentence", () => {
+    // Lower case after the first letter — a word, not a label.
+    expect(stripRubric("Грант на посилення ролі громадських організацій")).toBe(
+      "Грант на посилення ролі громадських організацій",
+    );
+  });
+
+  it("leaves a title with no label alone", () => {
+    expect(stripRubric("Набір громадських організацій для участі у програмі")).toBe(
+      "Набір громадських організацій для участі у програмі",
+    );
   });
 });

@@ -18,6 +18,7 @@ import { createHash } from "node:crypto";
 import { extractGrant } from "../../agents/extraction";
 import { extractText } from "../documents/text";
 import { MAX_ARTICLE_CHARS } from "../ingestion/article";
+import { statusForDeadline } from "../schemas/grant";
 import { documentStore } from "./documents";
 import { prisma } from "./tenancy";
 
@@ -130,7 +131,7 @@ export async function createGrantFromDocument(
         donorName: g.donorName ?? "Донор не вказаний у документі",
         sourceUrl: "",
         applicationUrl: g.applicationUrl,
-        status: g.deadline ? "OPEN" : "UNKNOWN",
+        status: statusForDeadline(g.deadline ? new Date(g.deadline) : null),
         deadline: g.deadline ? new Date(g.deadline) : null,
         deadlineIsKnown: g.deadline !== null,
         fundingMin: g.fundingMin,
