@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import {
   ConceptGenerationFailed,
+  approveConcept,
   approveSection,
   editSection,
   generateDraft,
@@ -270,6 +271,31 @@ export async function approveSectionAction(
 
   try {
     await approveSection(organizationId, grantId, key, user.userId);
+  } catch (err) {
+    if (err instanceof ConceptGenerationFailed) return { ok: false, message: err.message };
+    throw err;
+  }
+
+  revalidatePath(`/hranty/${grantId}/redaktor`);
+  return { ok: true };
+}
+
+/**
+ * Confirm the whole note.
+ *
+ * Replaces eight per-section confirmations with one. What it asserts is
+ * unchanged and deliberately unsoftened: a person has read every section and
+ * takes responsibility for it.
+ */
+export async function approveConceptAction(
+  _prev: EditorResult,
+  form: FormData,
+): Promise<EditorResult> {
+  const { organizationId, user } = await requireDb();
+  const grantId = String(form.get("grantId") ?? "");
+
+  try {
+    await approveConcept(organizationId, grantId, user.userId);
   } catch (err) {
     if (err instanceof ConceptGenerationFailed) return { ok: false, message: err.message };
     throw err;

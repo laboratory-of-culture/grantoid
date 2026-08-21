@@ -634,3 +634,80 @@ export async function approveSection(
     },
   });
 }
+
+/**
+ * Confirm the whole note in one act.
+ *
+ * The editor used to ask for eight confirmations, one per section, because the
+ * data model has eight rows and the screen was built out of them. That is the
+ * shape of the storage, not of the reading: nobody reads a concept note section
+ * by section and signs off each paragraph, and eight buttons made the
+ * confirmation feel like paperwork rather than the moment a person takes
+ * responsibility for what the model wrote.
+ *
+ * One button, one audit entry naming every section it covered. The per-section
+ * `approvedAt` stays — the distinction between text a model wrote and text a
+ * person has been through is what `human-in-the-loop` turns on, and losing it
+ * would leave a draft that can never stop being one. It is now set eight times
+ * by one decision instead of eight.
+ */
+export async function approveConcept(
+  organizationId: string,
+  grantId: string,
+  userId: string,
+): Promise<{ approved: number }> {
+  const db = forOrganization(organizationId);
+  const draft = await db.conceptDraft.findFirst({
+    where: { grantId },
+    include: { sections: true },
+  });
+  if (!draft) throw new ConceptGenerationFailed("чернетки ще немає");
+
+  const pending = draft.sections.filter((s) => s.approvedAt === null);
+  if (pending.length === 0) return { approved: 0 };
+
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.conceptSection.updateMany({
+      where: { draftId: draft.id, approvedAt: null },
+      data: { approvedAt: now },
+    }),
+    // One entry per section it covered, plus one for the decision itself.
+    //
+    // `AuditEntry` records state transitions and deliberately has no free-text
+    // column, so the list of sections cannot be a note on the draft entry. Kept
+    // per-section instead: the trail still says exactly what was confirmed, and
+    // it stays the same shape as when each section was confirmed on its own.
+    prisma.auditEntry.createMany({
+      data: pending.map((section) => ({
+        organizationId,
+        actorType: "USER" as const,
+        actorId: userId,
+        action: "concept.section_approved",
+        subjectType: "ConceptSection",
+        subjectId: `${draft.id}:${section.key}`,
+        toState: "APPROVED",
+      })),
+    }),
+    prisma.auditEntry.create({
+      data: {
+        organizationId,
+        actorType: "USER",
+        actorId: userId,
+        action: "concept.approved",
+        subjectType: "ConceptDraft",
+        subjectId: draft.id,
+        toState: "REVIEWED",
+      },
+    }),
+    prisma.conceptDraft.update({
+      where: { id: draft.id },
+      data: {
+        updatedAt: now,
+        status: draft.sections.length === CONCEPT_SECTIONS.length ? "REVIEWED" : "DRAFT",
+      },
+    }),
+  ]);
+
+  return { approved: pending.length };
+}

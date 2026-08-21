@@ -12,20 +12,32 @@ import { FlaskConical } from "lucide-react";
  *
  * So it is compact instead — one line that names what is not evaluated rather
  * than apologising in general terms. "Ще працюємо над цим" tells a grant
- * manager nothing they can act on; "умови донора з PDF не читаються" tells them
- * to open the original.
+ * manager nothing they can act on; naming the specific gap tells them where to
+ * look.
  *
- * A server component now: with nothing to dismiss there is no state, and no
- * reason to ship it to the browser.
+ * The middle clause used to read «умови донора з PDF система не читає — лише
+ * текст оголошення», and it went stale: donor guidelines are read now, both
+ * when an organization uploads them against a call and when it creates a call
+ * out of a PDF a donor mailed. It sat on the editor screen of a grant that was
+ * built from the donor's own PDF, denying it had read the file it had read. A
+ * banner about trustworthiness is the worst place in the product for a
+ * statement that is not true.
+ *
+ * What replaced it is the limitation that is still real: an announcement we
+ * crawled is a notice about a call, not the call, and its confidence score says
+ * how much of it came back.
+ *
+ * A server component: with nothing to dismiss there is no state, and no reason
+ * to ship it to the browser.
  */
 export function BetaBanner() {
   return (
     <aside className="banner" role="note" aria-label="Дослідна експлуатація">
       <FlaskConical size={14} aria-hidden="true" className="banner-icon" />
       <p className="banner-body">
-        <strong>Бета.</strong> Добір і оцінку прийнятності не перевірено на живих даних. Умови
-        донора з PDF система не читає — лише текст оголошення. Кожен висновок звіряйте з
-        оригіналом.
+        <strong>Бета.</strong> Добір і оцінку прийнятності не перевірено на живих даних.
+        Конкурси зі стрічки прочитано з оголошень, а не з умов донора — повні умови
+        завантажте самі. Кожен висновок звіряйте з оригіналом.
       </p>
     </aside>
   );

@@ -653,16 +653,38 @@ body {
 
 /* ----------------------------------------------------------- the document */
 
-/* The concept as one document, with its findings beside it rather than under
- * it. Eight separate cards were the shape of the data, not of the work: a
- * concept note is read as one argument, and boxed paragraphs make it impossible
- * to see whether the goal answers the problem two boxes above. */
+/* The concept as one document. Eight separate cards were the shape of the data,
+ * not of the work: a concept note is read as one argument, and boxed paragraphs
+ * make it impossible to see whether the goal answers the problem two boxes
+ * above.
+ *
+ * The findings rail is gone with them. A note beside the text meant reading it
+ * with the sentence it was about in peripheral vision; the suggestion now opens
+ * over the words themselves. That also gives the document the full width, which
+ * is what a page of prose wanted in the first place. */
 .doc-shell {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 24rem);
-  gap: var(--space-6);
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
+
+/* The three things you do to a whole document — check it, confirm it, take it
+ * away — in one bar above it, sticky so the confirmation is never further away
+ * than the top of the screen. */
+.doc-bar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: var(--border);
+  background: var(--color-ground);
+}
+
+.doc-bar-end { margin-inline-start: auto; }
 
 .doc {
   background: var(--color-surface-raised);
@@ -704,38 +726,7 @@ body {
 
 .doc-editor { width: 100%; font-family: inherit; line-height: var(--leading-normal); }
 
-/* The rail follows the document rather than scrolling away from it: a finding
- * you have to scroll back up to read is one that gets applied unread. */
-.doc-rail-inner {
-  position: sticky;
-  top: var(--space-5);
-}
-
-.rail-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  border: var(--border-quiet);
-  background: var(--color-surface-raised);
-  cursor: pointer;
-}
-
-/* The selected finding and its highlight are the same object, said twice. */
-.rail-card-active { border-color: var(--color-ink); }
-
-.rail-quote {
-  margin: 0;
-  padding-left: var(--space-3);
-  border-left: var(--rule-weight-quiet) solid var(--color-neutral-400);
-  font-size: var(--text-sm);
-  line-height: var(--leading-snug);
-  color: var(--color-neutral-800);
-}
-
 @media (max-width: 1100px) {
-  .doc-shell { grid-template-columns: 1fr; }
-  .doc-rail-inner { position: static; }
   .doc-controls { opacity: 1; }
 }
 
@@ -773,12 +764,67 @@ body {
 .flag-vague,
 .flag-long_sentence { border-bottom-color: var(--color-neutral-500); }
 
-/* The same distinction on the card, so a finding and its highlight are visibly
- * the same object. */
+/* The same distinction inside the popover, so a finding and its highlight are
+ * visibly the same object. */
 .flag-tag { background: var(--color-neutral-200); color: var(--color-neutral-800); }
 .flag-tag.flag-unsupported {
   background: var(--color-state-problem-bg);
   color: var(--color-state-problem-fg);
+}
+
+/* The suggestion, over the words it is about.
+ *
+ * Anchored to the flagged span rather than positioned by measurement: measuring
+ * means recomputing on every scroll and resize, and being wrong once puts the
+ * explanation on top of the sentence it explains. The anchor is inline so it
+ * does not break the line it sits in. */
+.flag-anchor {
+  position: relative;
+  display: inline;
+}
+
+.suggestion {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: max(20rem, 28ch);
+  max-width: 90vw;
+  padding: var(--space-4);
+  border: var(--border);
+  background: var(--color-surface-raised);
+  /* The one shadow in the system. Everything else in this design sits flat on
+     the page; this genuinely floats above the text and has to read that way, or
+     it looks like a paragraph that lost its place. */
+  box-shadow: 0 var(--rule-weight) 0 0 var(--color-ink);
+  text-align: start;
+  /* Undoes the parent paragraph's pre-wrap, which would otherwise turn every
+     newline in the explanation into a hard break. */
+  white-space: normal;
+  cursor: auto;
+}
+
+.suggestion-close { margin-inline-start: auto; }
+
+/* The replacement, set apart from the reason. They answer different questions —
+ * «що поставити» and «чому» — and running them together as two paragraphs made
+ * people apply the first without reading the second. */
+.suggestion-replacement {
+  margin: 0;
+  padding: var(--space-3);
+  border-left: var(--rule-weight) solid var(--color-ink);
+  background: var(--color-neutral-200);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+/* Near the right edge there is nowhere to put a popover that starts at the
+ * span. Flipping it is the standard answer and it needs no measurement. */
+@media (max-width: 640px) {
+  .suggestion { left: auto; right: 0; }
 }
 
 /* ------------------------------------------------------------------ media */

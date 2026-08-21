@@ -67,6 +67,7 @@ export const NOUN_UK = {
   finding: { one: "зауваження", few: "зауваження", many: "зауважень" },
   draft: { one: "чернетка", few: "чернетки", many: "чернеток" },
   opportunity: { one: "можливість", few: "можливості", many: "можливостей" },
+  section: { one: "секцію", few: "секції", many: "секцій" },
 } as const satisfies Record<string, PluralFormsUk>;
 
 /**

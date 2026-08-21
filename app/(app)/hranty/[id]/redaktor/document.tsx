@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Check, Download, Pencil, RefreshCw, ScanText, Sparkles, X } from "lucide-react";
 
 import type { ConceptView } from "../../../../../packages/db/concepts";
@@ -13,7 +13,7 @@ import {
 } from "../../../../../packages/schemas/writing-checks";
 import {
   applyFindingAction,
-  approveSectionAction,
+  approveConceptAction,
   generateAction,
   reviewDocumentAction,
   saveSectionAction,
@@ -24,21 +24,26 @@ import {
 /**
  * The concept as one document.
  *
- * It was eight cards, each with its own text, its own buttons and its own
- * review. That is the shape of the data, not the shape of the work: a concept
- * note is read as one argument, and eight boxes made it impossible to see
- * whether the goal answered the problem two boxes above it.
+ * It was eight cards, each with its own text, its own buttons, its own review
+ * and its own confirmation. That is the shape of the data, not of the work: a
+ * concept note is read as one argument, and eight boxes made it impossible to
+ * see whether the goal answered the problem two boxes above it.
  *
- * So the page is one document now — headings and prose, the way a reviewer at a
- * foundation will read it — and the per-section machinery moved into two
- * quieter places: controls that appear on the section you are pointing at, and
- * a rail of findings beside the text.
+ * Three things changed once it became one document, and each removed something
+ * a person had to do eight times:
  *
- * What did **not** move is the per-section state. A section a model wrote and
- * nobody has read is still a distinct thing from one a person has been through,
- * because `human-in-the-loop` turns on that distinction and one big textarea
- * would erase it. The document is a presentation of eight rows, not a
- * replacement for them.
+ *   - **One confirmation.** Nobody reads a concept note paragraph by paragraph
+ *     and signs off each one. The per-section `approvedAt` is still stored —
+ *     `human-in-the-loop` turns on the distinction between text a model wrote
+ *     and text a person has been through — but one decision now sets all of it.
+ *   - **Suggestions where the problem is.** A finding used to live in a rail
+ *     beside the text, so reading it meant looking away from the sentence it
+ *     was about. Now the flagged words are underlined and clicking them opens
+ *     the suggestion over the spot, with what to change and why.
+ *   - **The file is always available.** It used to refuse while any section was
+ *     an unread draft. Refusing does not keep a draft out of a donor's inbox;
+ *     it makes people retype the text into Word, where nothing carries the
+ *     warning at all. The warning went into the file instead.
  */
 export function ConceptDocument({
   grantId,
@@ -51,8 +56,12 @@ export function ConceptDocument({
     reviewDocumentAction,
     null,
   );
+  const [approveState, approve, approving] = useActionState<EditorResult, FormData>(
+    approveConceptAction,
+    null,
+  );
   const [dismissed, setDismissed] = useState<string[]>([]);
-  const [active, setActive] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
 
   const bySection: Record<string, Finding[]> =
     reviewState && reviewState.ok ? reviewState.review.bySection : {};
@@ -60,21 +69,95 @@ export function ConceptDocument({
   const visible = (key: string) =>
     (bySection[key] ?? []).filter((f) => !dismissed.includes(findingId(f)));
 
-  const all = concept.sections.flatMap((s) =>
-    visible(s.key).map((f) => ({ sectionKey: s.key, finding: f })),
-  );
-
+  const total = concept.sections.reduce((n, s) => n + visible(s.key).length, 0);
   const reviewed = reviewState !== null && reviewState.ok;
 
   // Counted from the sections themselves rather than from the draft status,
-  // which can lag a regeneration. This number decides whether the document may
-  // leave the product at all.
+  // which can lag a regeneration.
   const unread = concept.sections.filter(
     (s) => s.source === "AI_DRAFT" && s.approvedAt === null,
   ).length;
 
   return (
     <div className="doc-shell">
+      {/* One bar, above the text, carrying the three things you do to a whole
+          document: check it, confirm it, take it away. */}
+      <div className="doc-bar">
+        <form action={review}>
+          <input type="hidden" name="grantId" value={grantId} />
+          <button type="submit" className="btn btn-secondary" disabled={reviewing}>
+            <ScanText size={15} aria-hidden="true" />
+            {reviewing ? "Перевіряємо…" : "Перевірити весь текст"}
+          </button>
+        </form>
+
+        {unread > 0 ? (
+          <form action={approve}>
+            <input type="hidden" name="grantId" value={grantId} />
+            <button type="submit" className="btn btn-primary" disabled={approving}>
+              <Check size={15} aria-hidden="true" />
+              {approving ? "Позначаємо…" : "Я прочитав усю концепцію"}
+            </button>
+          </form>
+        ) : (
+          <span className="tag tag-state-matched">
+            <Check size={13} aria-hidden="true" />
+            Прочитано людиною
+          </span>
+        )}
+
+        {/* Never disabled. The document leaves whenever it is asked for; an
+            unread draft is stamped inside the file rather than held back. */}
+        <a href={`/hranty/${grantId}/redaktor/eksport`} className="btn btn-ghost" download>
+          <Download size={15} aria-hidden="true" />
+          Зберегти як файл (RTF)
+        </a>
+
+        <span className="doc-bar-end kicker">
+          {reviewing
+            ? "модель читає секції по черзі"
+            : reviewed
+              ? total > 0
+                ? countUk(total, NOUN_UK.finding)
+                : "зауважень не знайдено"
+              : unread > 0
+                ? `${countUk(unread, NOUN_UK.section)} ще не прочитано`
+                : ""}
+        </span>
+      </div>
+
+      {unread > 0 ? (
+        <p className="field-hint">
+          У файлі, збереженому зараз, буде помітка, що {countUk(unread, NOUN_UK.section)}{" "}
+          написала модель і їх ще ніхто не перевіряв.
+        </p>
+      ) : null}
+
+      {approveState && !approveState.ok ? (
+        <p className="field-error" role="alert">
+          {approveState.message}
+        </p>
+      ) : null}
+
+      {reviewState && !reviewState.ok ? (
+        <p className="field-error" role="alert">
+          {reviewState.message}
+        </p>
+      ) : null}
+
+      {reviewed && reviewState.review.failed.length > 0 ? (
+        <p className="field-error" role="alert">
+          Не вдалося перевірити: {reviewState.review.failed.join(", ")}. Решту перевірено.
+        </p>
+      ) : null}
+
+      {reviewed && total === 0 ? (
+        <p className="field-hint">
+          Порожніх формулювань, задовгих речень і непідтверджених тверджень не знайдено. Це
+          не означає, що текст готовий — тільки що цих проблем немає.
+        </p>
+      ) : null}
+
       <article className="doc">
         {concept.sections.map((section) => (
           <DocumentSection
@@ -82,91 +165,15 @@ export function ConceptDocument({
             grantId={grantId}
             section={section}
             findings={visible(section.key)}
-            activeId={active}
-            onSelect={setActive}
+            openId={open}
+            onOpen={setOpen}
+            onDismiss={(id) => {
+              setDismissed((d) => [...d, id]);
+              setOpen(null);
+            }}
           />
         ))}
       </article>
-
-      <aside className="doc-rail">
-        <div className="doc-rail-inner stack">
-          <form action={review}>
-            <input type="hidden" name="grantId" value={grantId} />
-            <button type="submit" className="btn btn-primary btn-block" disabled={reviewing}>
-              <ScanText size={16} aria-hidden="true" />
-              {reviewing ? "Перевіряємо…" : "Перевірити весь текст"}
-            </button>
-          </form>
-
-          {/* The download is the end of the work, so it sits with the review
-              rather than at the bottom of a long document. It refuses while any
-              section is an unread AI draft — a file is the moment we stop being
-              able to enforce anything, because once it is downloaded we have no
-              say in where it goes. */}
-          {unread === 0 ? (
-            <a
-              href={`/hranty/${grantId}/redaktor/eksport`}
-              className="btn btn-secondary btn-block"
-              download
-            >
-              <Download size={16} aria-hidden="true" />
-              Зберегти як файл
-            </a>
-          ) : (
-            <p className="field-hint">
-              Щоб зберегти концепцію файлом, прочитайте решту секцій:{" "}
-              <strong>{unread}</strong> ще позначені як чернетка AI.
-            </p>
-          )}
-
-          {reviewing ? (
-            <p className="field-hint">
-              Модель працює локально й читає секції по черзі — близько хвилини на всю
-              концепцію.
-            </p>
-          ) : null}
-
-          {reviewState && !reviewState.ok ? (
-            <p className="field-error" role="alert">
-              {reviewState.message}
-            </p>
-          ) : null}
-
-          {reviewed && reviewState.review.failed.length > 0 ? (
-            <p className="field-error" role="alert">
-              Не вдалося перевірити: {reviewState.review.failed.join(", ")}. Решту перевірено.
-            </p>
-          ) : null}
-
-          {reviewed && all.length === 0 ? (
-            <p className="field-hint">
-              Порожніх формулювань, задовгих речень і непідтверджених тверджень не знайдено.
-              Це не означає, що текст готовий — тільки що цих проблем немає.
-            </p>
-          ) : null}
-
-          {all.length > 0 ? (
-            <>
-              <span className="kicker">
-                {countUk(all.length, NOUN_UK.finding)}
-              </span>
-              <div className="stack">
-                {all.map(({ sectionKey, finding }) => (
-                  <RailCard
-                    key={findingId(finding)}
-                    grantId={grantId}
-                    sectionKey={sectionKey}
-                    finding={finding}
-                    active={active === findingId(finding)}
-                    onSelect={() => setActive(findingId(finding))}
-                    onDismiss={() => setDismissed((d) => [...d, findingId(finding)])}
-                  />
-                ))}
-              </div>
-            </>
-          ) : null}
-        </div>
-      </aside>
     </div>
   );
 }
@@ -174,22 +181,24 @@ export function ConceptDocument({
 /**
  * One section of the document.
  *
- * The heading carries the state; the controls appear when the section is
- * hovered or focused. Eight rows of three buttons permanently on screen was the
- * loudest thing on the page, and none of it is what a person came to read.
+ * The heading carries the state; the controls appear on the section you are
+ * pointing at. No confirmation here any more — that moved to the bar, where a
+ * decision about the whole note belongs.
  */
 function DocumentSection({
   grantId,
   section,
   findings,
-  activeId,
-  onSelect,
+  openId,
+  onOpen,
+  onDismiss,
 }: {
   grantId: string;
   section: ConceptView["sections"][number];
   findings: Finding[];
-  activeId: string | null;
-  onSelect: (id: string | null) => void;
+  openId: string | null;
+  onOpen: (id: string | null) => void;
+  onDismiss: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [saveState, save, saving] = useActionState<EditorResult, FormData>(
@@ -200,10 +209,12 @@ function DocumentSection({
     generateAction,
     null,
   );
-  const [, approve, approving] = useActionState<EditorResult, FormData>(
-    approveSectionAction,
-    null,
-  );
+
+  // Same rule as the profile editor: close on success, stay open on failure so
+  // the error has somewhere to live.
+  useEffect(() => {
+    if (saveState?.ok) setEditing(false);
+  }, [saveState]);
 
   const isUnreadDraft = section.source === "AI_DRAFT" && section.approvedAt === null;
   const spans = spansFor(findings, section.content);
@@ -214,9 +225,7 @@ function DocumentSection({
         <h3 className="h3">{section.labelUk}</h3>
         {/* The label and the colour have to agree. Printing the source column
             straight through showed «Чернетка AI» in the colour that means done
-            on a section somebody had already approved — the word said one thing
-            and the colour the opposite, on the one distinction this editor is
-            built to keep visible. */}
+            on a section somebody had already approved. */}
         <span className={`tag ${isUnreadDraft ? "tag-state-unknown" : "tag-state-matched"}`}>
           {isUnreadDraft
             ? SECTION_SOURCE_LABEL_UK.AI_DRAFT
@@ -236,26 +245,6 @@ function DocumentSection({
               <Pencil size={13} aria-hidden="true" />
               Редагувати
             </button>
-          ) : null}
-
-          {/* Only where it means something. Approving is the act that takes a
-              section out of AI_DRAFT, and it is the whole reason the document
-              can ever be called reviewed — dropping it in the redesign would
-              have left a draft that could never stop being one. */}
-          {isUnreadDraft ? (
-            <form action={approve}>
-              <input type="hidden" name="grantId" value={grantId} />
-              <input type="hidden" name="sectionKey" value={section.key} />
-              <button
-                type="submit"
-                className="btn btn-ghost"
-                disabled={approving}
-                title="Позначити секцію як прочитану"
-              >
-                <Check size={13} aria-hidden="true" />
-                {approving ? "…" : "Прочитав"}
-              </button>
-            </form>
           ) : null}
 
           <form action={regenerate}>
@@ -314,10 +303,13 @@ function DocumentSection({
         </form>
       ) : (
         <MarkedText
+          grantId={grantId}
+          sectionKey={section.key}
           content={section.content}
           spans={spans}
-          activeId={activeId}
-          onSelect={onSelect}
+          openId={openId}
+          onOpen={onOpen}
+          onDismiss={onDismiss}
         />
       )}
     </section>
@@ -325,22 +317,33 @@ function DocumentSection({
 }
 
 /**
- * The prose, with flagged spans marked and clickable.
+ * The prose, with flagged spans underlined and clickable.
  *
  * Sliced at offsets rather than replaced by string, because a phrase can occur
  * twice and a replace would underline the wrong one — pointing a person at a
  * sentence that is fine.
+ *
+ * The popover is a sibling of the underlined span inside a positioned wrapper,
+ * not a floating layer placed by measurement. Measuring means recomputing on
+ * every scroll and resize, and getting it wrong puts the explanation on top of
+ * the sentence it explains.
  */
 function MarkedText({
+  grantId,
+  sectionKey,
   content,
   spans,
-  activeId,
-  onSelect,
+  openId,
+  onOpen,
+  onDismiss,
 }: {
+  grantId: string;
+  sectionKey: string;
   content: string;
   spans: ReturnType<typeof spansFor>;
-  activeId: string | null;
-  onSelect: (id: string | null) => void;
+  openId: string | null;
+  onOpen: (id: string | null) => void;
+  onDismiss: (id: string) => void;
 }) {
   const parts: React.ReactNode[] = [];
   let cursor = 0;
@@ -348,18 +351,30 @@ function MarkedText({
   spans.forEach((span, i) => {
     if (span.start > cursor) parts.push(content.slice(cursor, span.start));
     const id = findingId(span.finding);
+    const isOpen = openId === id;
+
     parts.push(
-      <button
-        key={i}
-        type="button"
-        className={`flag flag-${span.finding.category.toLowerCase()}${
-          activeId === id ? " flag-active" : ""
-        }`}
-        onClick={() => onSelect(activeId === id ? null : id)}
-        title={span.finding.whyUk}
-      >
-        {content.slice(span.start, span.end)}
-      </button>,
+      <span className="flag-anchor" key={i}>
+        <button
+          type="button"
+          className={`flag flag-${span.finding.category.toLowerCase()}${
+            isOpen ? " flag-active" : ""
+          }`}
+          aria-expanded={isOpen}
+          onClick={() => onOpen(isOpen ? null : id)}
+        >
+          {content.slice(span.start, span.end)}
+        </button>
+        {isOpen ? (
+          <Suggestion
+            grantId={grantId}
+            sectionKey={sectionKey}
+            finding={span.finding}
+            onClose={() => onOpen(null)}
+            onDismiss={() => onDismiss(id)}
+          />
+        ) : null}
+      </span>,
     );
     cursor = span.end;
   });
@@ -369,27 +384,42 @@ function MarkedText({
   return <p className="doc-text">{parts}</p>;
 }
 
-/** One finding, beside the text rather than under it. */
-function RailCard({
+/**
+ * What is wrong, why, and what to put instead — over the words it is about.
+ *
+ * The «why» is not decoration. A suggestion with no reason trains a person to
+ * accept every one of them, which is the opposite of what a reviewer is for:
+ * the model is often wrong, and the reason is what lets somebody see that.
+ */
+function Suggestion({
   grantId,
   sectionKey,
   finding,
-  active,
-  onSelect,
+  onClose,
   onDismiss,
 }: {
   grantId: string;
   sectionKey: string;
   finding: Finding;
-  active: boolean;
-  onSelect: () => void;
+  onClose: () => void;
   onDismiss: () => void;
 }) {
   const [state, apply, applying] = useActionState<EditorResult, FormData>(
     applyFindingAction,
     null,
   );
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Escape closes it, because a popover you can only dismiss with the mouse is
+  // one a keyboard user is trapped behind.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    ref.current?.focus();
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   // Only an actual replacement can be applied. For an unsupported claim the
   // advice is about what to find out, and substituting anything would supply
@@ -397,23 +427,26 @@ function RailCard({
   const replaceable = finding.suggestionUk !== null && finding.category !== "UNSUPPORTED";
 
   return (
-    <article
-      ref={ref}
-      className={`rail-card${active ? " rail-card-active" : ""}`}
-      onClick={onSelect}
-    >
+    <div className="suggestion" role="dialog" tabIndex={-1} ref={ref}>
       <div className="row">
         <span className={`tag flag-tag flag-${finding.category.toLowerCase()}`}>
           {CATEGORY_LABEL_UK[finding.category]}
         </span>
         <span className="kicker">{finding.source === "RULE" ? "правило" : "AI"}</span>
+        <button
+          type="button"
+          className="btn btn-ghost suggestion-close"
+          onClick={onClose}
+          aria-label="Закрити"
+        >
+          <X size={13} aria-hidden="true" />
+        </button>
       </div>
 
-      <p className="rail-quote">«{finding.quote}»</p>
       <p className="card-body">{finding.whyUk}</p>
 
       {finding.suggestionUk ? (
-        <p className="card-body muted">{finding.suggestionUk}</p>
+        <p className="suggestion-replacement">{finding.suggestionUk}</p>
       ) : null}
 
       {state && !state.ok ? (
@@ -429,27 +462,22 @@ function RailCard({
             <input type="hidden" name="sectionKey" value={sectionKey} />
             <input type="hidden" name="quote" value={finding.quote} />
             <input type="hidden" name="replacement" value={finding.suggestionUk ?? ""} />
-            <button type="submit" className="btn btn-secondary" disabled={applying}>
+            <button type="submit" className="btn btn-primary" disabled={applying}>
               <Check size={13} aria-hidden="true" />
-              {applying ? "…" : "Застосувати"}
+              {applying ? "…" : "Замінити"}
             </button>
           </form>
         ) : null}
 
         <button type="button" className="btn btn-ghost" onClick={onDismiss}>
-          <X size={13} aria-hidden="true" />
-          Не зауваження
+          Це не помилка
         </button>
       </div>
-    </article>
+    </div>
   );
 }
 
-export function EmptyConcept({
-  grantId,
-}: {
-  grantId: string;
-}) {
+export function EmptyConcept({ grantId }: { grantId: string }) {
   const [state, generate, generating] = useActionState<EditorResult, FormData>(
     generateAction,
     null,
@@ -460,8 +488,7 @@ export function EmptyConcept({
       <h2 className="h3">Концепції ще немає</h2>
       <p className="prose">
         Система напише чернетку з восьми секцій на основі вашого профілю та умов цього
-        конкурсу. Це саме чернетка: усе, що вона напише, треба прочитати й виправити, і жодна
-        секція не вважатиметься готовою, доки ви цього не зробите.
+        конкурсу. Це саме чернетка: усе, що вона напише, треба прочитати й виправити.
       </p>
       <p className="prose muted">
         Вона не вигадуватиме цифр, партнерів чи досвіду, яких немає у вашому профілі. Там, де
