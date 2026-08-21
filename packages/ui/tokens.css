@@ -11,9 +11,27 @@
  */
 
 /* ---------------------------------------------------------------- typeface --
- * Archivo, self-hosted. Never a Google Fonts link: a CDN request fails silently
- * under a strict CSP and falls back to a system face rather than erroring, so
- * the page ships looking wrong with nothing in the console.
+ * Inter, self-hosted and subset. Never a Google Fonts link: a CDN request fails
+ * silently under a strict CSP and falls back to a system face rather than
+ * erroring, so the page ships looking wrong with nothing in the console.
+ *
+ * **Not Archivo, and that is the whole point.** The brief named Archivo and the
+ * file was never added, so every screen has been rendering in Segoe UI. Adding
+ * it would have been worse than leaving it out: Archivo ships latin, latin-ext
+ * and vietnamese, and no Cyrillic at all. In a Ukrainian-first product that
+ * means «Grant Assistant» and «PDF» in Archivo and every actual sentence in a
+ * fallback — two typefaces per line. Inter is the same Swiss-grotesque register,
+ * carries Cyrillic including the four letters that are Ukrainian rather than
+ * Russian (і ї є ґ), and covers the guillemets and the apostrophe this
+ * interface sets constantly.
+ *
+ * Subset to what the product writes: Latin, Latin Extended (a Romanian partner
+ * name lives in the demo profile), Cyrillic, punctuation and the hryvnia sign.
+ * 876 KB of TTF becomes 187 KB of WOFF2 with the variable axes intact.
+ *
+ * No font-stretch descriptor. Archivo had a width axis and Inter does not;
+ * claiming a range the file cannot render invites the browser to synthesise
+ * one, which is how a grotesque ends up looking smeared.
  *
  * The URL is absolute, resolved from `public/` at runtime, rather than a
  * relative path webpack resolves at build time. A relative one turns an absent
@@ -22,13 +40,13 @@
  * browser asks for it, does not get it, and falls back to the next family in
  * the stack: a grotesque with Cyrillic coverage, never a serif.
  *
- * Fetch step is in packages/ui/README.md.
+ * Licence: SIL OFL 1.1, shipped beside the font at public/fonts/OFL-Inter.txt.
+ * Refresh step is in packages/ui/README.md.
  */
 @font-face {
-  font-family: "Archivo";
-  src: url("/fonts/archivo-variable.woff2") format("woff2-variations");
+  font-family: "Inter";
+  src: url("/fonts/inter-variable.woff2") format("woff2-variations");
   font-weight: 100 900;
-  font-stretch: 62% 125%;
   font-style: normal;
   font-display: swap;
 }
@@ -100,7 +118,7 @@
    * tracking rather than from a second typeface — a display serif against a
    * grotesque is the move this system deliberately does not make.
    */
-  --font-sans: "Archivo", "Segoe UI", "Noto Sans", system-ui, sans-serif;
+  --font-sans: "Inter", "Segoe UI", "Noto Sans", system-ui, sans-serif;
   --font-mono: ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
 
   --text-xs: 0.75rem;

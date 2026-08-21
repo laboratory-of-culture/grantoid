@@ -13,21 +13,48 @@ colour, font name or raw pixel value. `components.css` composes from it.
 @import "../packages/ui/components.css";
 ```
 
-### Archivo
+### Inter
 
-The typeface is self-hosted, never a Google Fonts link — a CDN request fails
-silently under a strict CSP and falls back to a system face rather than
-erroring, so the page ships looking wrong with nothing in the console.
+The typeface is self-hosted and committed, never a Google Fonts link — a CDN
+request fails silently under a strict CSP and falls back to a system face
+rather than erroring, so the page ships looking wrong with nothing in the
+console.
 
-Download the variable font and place it at `public/fonts/archivo-variable.woff2`:
+**The brief said Archivo. Archivo has no Cyrillic.** Its Google Fonts subsets
+are `latin`, `latin-ext`, `vietnamese` and nothing else. In a Ukrainian-first
+interface that means the wordmark and «PDF» render in Archivo while every
+sentence around them falls back — two typefaces on every line, which is worse
+than the single fallback the product had while the file was simply missing.
+Inter is the same Swiss-grotesque register, is variable across 100–900, and
+carries the four letters that make Cyrillic Ukrainian rather than Russian:
+і ї є ґ.
 
+The file at `public/fonts/inter-variable.woff2` is subset to what this product
+writes — Latin, Latin Extended (a Romanian partner name lives in the demo
+profile), Cyrillic, punctuation, and the hryvnia sign. 187 KB, variable axes
+intact. Its licence sits beside it as `OFL-Inter.txt`; SIL OFL 1.1 requires the
+licence to travel with the font.
+
+To refresh it, or to swap in another face:
+
+```bash
+curl -sLo /tmp/inter.ttf   "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf"
+
+python -m fontTools.subset /tmp/inter.ttf --flavor=woff2   --output-file=public/fonts/inter-variable.woff2 --layout-features='*' --name-IDs='*'   --unicodes="U+0000-00FF,U+0100-024F,U+0259,U+0400-04FF,U+0500-052F,U+2000-206F,U+2070-209F,U+20A0-20BF,U+2116,U+2212"
 ```
-https://fonts.google.com/specimen/Archivo  →  Get font → download → extract the variable .ttf
-```
 
-Convert the `.ttf` to `.woff2` (`fonttools`, `woff2_compress`, or any web
-converter). Archivo is SIL Open Font License 1.1; ship the licence alongside the
-font file.
+Needs `fonttools` and `brotli`. **Check the Ukrainian glyphs before shipping any
+replacement** — plenty of faces labelled "cyrillic" cover Russian and drop ґ or
+ї:
+
+```bash
+python -c "
+from fontTools.ttLib import TTFont
+c = TTFont('public/fonts/inter-variable.woff2', lazy=True).getBestCmap()
+print([n for cp, n in {0x0456:'i',0x0457:'yi',0x0454:'ie',0x0491:'ghe',0x0490:'GHE',
+                       0x2019:'apos',0x00AB:'laquo',0x20B4:'hryvnia'}.items() if cp not in c]
+      or 'all present')"
+```
 
 **It goes in `public/`, not next to the stylesheet.** The `@font-face` rule uses
 an absolute `/fonts/…` URL that the browser resolves at runtime. A relative path
@@ -35,9 +62,8 @@ would be resolved by webpack at build time instead, and an absent font would
 fail the build rather than degrade — which is exactly what happened the first
 time this was written, under a comment promising graceful degradation.
 
-With the absolute URL and no file present, the browser asks, does not get it, and
-falls back to Segoe UI / Noto Sans — a grotesque with Cyrillic coverage, not a
-serif. The layout holds while the personality is missing.
+No `font-stretch` descriptor. Archivo had a width axis and Inter does not, and
+declaring a range the file cannot render invites the browser to synthesise one.
 
 ## The rules that are easy to undo by accident
 

@@ -71,15 +71,23 @@ the fill only separates "problem" from "everything else". See
 
 Lucide, imported as React components: `import { CircleAlert } from "lucide-react"`.
 Never a CDN `<script>` — it fails silently under a strict CSP and the page ships
-with missing icons and a clean console. Same reason Archivo is self-hosted rather
-than linked from Google Fonts.
+with missing icons and a clean console. Same reason the typeface is self-hosted
+rather than linked from Google Fonts.
 
 ## Type
 
-One family in every role. The personality comes from weight, width and tracking,
-and from the sans/mono contrast — mono is for identifiers and data: rule keys,
-source URLs, deadlines, token counts, table headers. A display serif against a
-grotesque is the move this system deliberately does not make.
+Inter, self-hosted and subset, in every role. The personality comes from weight
+and tracking, and from the sans/mono contrast — mono is for identifiers and
+data: rule keys, source URLs, deadlines, token counts, table headers. A display
+serif against a grotesque is the move this system deliberately does not make.
+
+The brief said Archivo; Archivo has no Cyrillic, and in a Ukrainian-first
+interface that puts two typefaces on every line. **Any replacement has to be
+checked for і ї є ґ before it ships** — plenty of faces labelled "cyrillic"
+cover Russian and drop those four. The check is in `packages/ui/README.md`.
+
+Weight only, no width axis. Inter has none, and declaring a `font-stretch`
+range the file cannot render invites the browser to synthesise one.
 
 ## Single theme
 
