@@ -203,19 +203,23 @@ grants.example.org {
 ### Планувальник
 
 ```cron
-# Збір, класифікація, витягування — раз на добу
-0 4 * * * cd /opt/grant-assistant && docker compose -f docker-compose.prod.yml exec -T app npx tsx scripts/setup-sources.ts   >> /var/log/ga-ingest.log 2>&1
-30 4 * * * cd /opt/grant-assistant && docker compose -f docker-compose.prod.yml exec -T app npx tsx scripts/classify.ts        >> /var/log/ga-classify.log 2>&1
-0 5 * * * cd /opt/grant-assistant && docker compose -f docker-compose.prod.yml exec -T app npx tsx scripts/extract-grants.ts   >> /var/log/ga-extract.log 2>&1
-
-# Зіставлення — найдовший етап, після витягування
-0 6 * * * cd /opt/grant-assistant && docker compose -f docker-compose.prod.yml exec -T app npx tsx scripts/build-feed.ts       >> /var/log/ga-match.log 2>&1
+# Обхід джерел, класифікація, витягування, зіставлення — одним рядком, раз на добу
+0 4 * * * cd /opt/grant-assistant && docker compose -f docker-compose.prod.yml exec -T app npm run nightly >> /var/log/ga-nightly.log 2>&1
 
 # Розсилка — понеділок, десята ранку
-0 10 * * 1 cd /opt/grant-assistant && docker compose -f docker-compose.prod.yml exec -T app npm run digest                     >> /var/log/ga-digest.log 2>&1
+0 10 * * 1 cd /opt/grant-assistant && docker compose -f docker-compose.prod.yml exec -T app npm run digest >> /var/log/ga-digest.log 2>&1
 ```
 
-Порядок обов'язковий: кожен етап читає те, що залишив попередній.
+Один рядок, а не чотири, і це не про охайність. Порядок етапів обов'язковий —
+кожен читає те, що залишив попередній, — а розносити їх по годинах означає
+вгадувати, скільки триватиме витягування. Якщо воно затягнеться понад годину,
+зіставлення о шостій почне працювати з половиною даних і нічого про це не
+скаже. `npm run nightly` виконує етапи послідовно: наступний починається тоді,
+коли попередній справді закінчив.
+
+Ця ж команда будує стрічки **всім** організаціям. `scripts/build-feed.ts`
+залишається способом перебудувати одну вручну — на постійний розклад його
+ставити не можна, він знає лише про одну організацію.
 
 Джерела опитуються раз на добу — не тому, що технічно не можна частіше, а тому,
 що ГУРТ і Простір публікують рідше, ніж раз на годину, і частіший обхід означає
