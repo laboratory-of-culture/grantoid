@@ -14,6 +14,7 @@ import {
 import {
   applyFindingAction,
   approveConceptAction,
+  dismissFindingAction,
   generateAction,
   reviewDocumentAction,
   saveSectionAction,
@@ -48,9 +49,19 @@ import {
 export function ConceptDocument({
   grantId,
   concept,
+  findings,
 }: {
   grantId: string;
   concept: ConceptView;
+  /**
+   * What the last review found, read from storage.
+   *
+   * A prop rather than component state. The review costs about a hundred
+   * seconds of the one local GPU, and holding the result in the page meant a
+   * person waited a minute and a half, reloaded once, and had nothing — with no
+   * way to tell that from a review that found nothing.
+   */
+  findings: Record<string, Finding[]>;
 }) {
   const [reviewState, review, reviewing] = useActionState<DocumentReviewResult, FormData>(
     reviewDocumentAction,
@@ -60,17 +71,21 @@ export function ConceptDocument({
     approveConceptAction,
     null,
   );
-  const [dismissed, setDismissed] = useState<string[]>([]);
   const [open, setOpen] = useState<string | null>(null);
 
+  // The stored findings are the truth; a review that just ran in this page
+  // supersedes them until the revalidation catches up.
   const bySection: Record<string, Finding[]> =
-    reviewState && reviewState.ok ? reviewState.review.bySection : {};
+    reviewState && reviewState.ok ? reviewState.review.bySection : findings;
 
-  const visible = (key: string) =>
-    (bySection[key] ?? []).filter((f) => !dismissed.includes(findingId(f)));
+  const visible = (key: string) => bySection[key] ?? [];
 
   const total = concept.sections.reduce((n, s) => n + visible(s.key).length, 0);
-  const reviewed = reviewState !== null && reviewState.ok;
+  // Two different questions. `justReviewed` is about the run that happened in
+  // this page and owns its error list; `reviewed` is whether a review has ever
+  // run, which stored findings answer on their own after a reload.
+  const justReviewed = reviewState !== null && reviewState.ok;
+  const reviewed = justReviewed || total > 0;
 
   // Counted from the sections themselves rather than from the draft status,
   // which can lag a regeneration.
@@ -145,13 +160,13 @@ export function ConceptDocument({
         </p>
       ) : null}
 
-      {reviewed && reviewState.review.failed.length > 0 ? (
+      {justReviewed && reviewState.review.failed.length > 0 ? (
         <p className="field-error" role="alert">
           Не вдалося перевірити: {reviewState.review.failed.join(", ")}. Решту перевірено.
         </p>
       ) : null}
 
-      {reviewed && total === 0 ? (
+      {justReviewed && total === 0 ? (
         <p className="field-hint">
           Порожніх формулювань, задовгих речень і непідтверджених тверджень не знайдено. Це
           не означає, що текст готовий — тільки що цих проблем немає.
@@ -167,10 +182,7 @@ export function ConceptDocument({
             findings={visible(section.key)}
             openId={open}
             onOpen={setOpen}
-            onDismiss={(id) => {
-              setDismissed((d) => [...d, id]);
-              setOpen(null);
-            }}
+            onDismissed={() => setOpen(null)}
           />
         ))}
       </article>
@@ -191,14 +203,14 @@ function DocumentSection({
   findings,
   openId,
   onOpen,
-  onDismiss,
+  onDismissed,
 }: {
   grantId: string;
   section: ConceptView["sections"][number];
   findings: Finding[];
   openId: string | null;
   onOpen: (id: string | null) => void;
-  onDismiss: (id: string) => void;
+  onDismissed: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [saveState, save, saving] = useActionState<EditorResult, FormData>(
@@ -309,7 +321,7 @@ function DocumentSection({
           spans={spans}
           openId={openId}
           onOpen={onOpen}
-          onDismiss={onDismiss}
+          onDismissed={onDismissed}
         />
       )}
     </section>
@@ -335,7 +347,7 @@ function MarkedText({
   spans,
   openId,
   onOpen,
-  onDismiss,
+  onDismissed,
 }: {
   grantId: string;
   sectionKey: string;
@@ -343,7 +355,7 @@ function MarkedText({
   spans: ReturnType<typeof spansFor>;
   openId: string | null;
   onOpen: (id: string | null) => void;
-  onDismiss: (id: string) => void;
+  onDismissed: () => void;
 }) {
   const parts: React.ReactNode[] = [];
   let cursor = 0;
@@ -371,7 +383,7 @@ function MarkedText({
             sectionKey={sectionKey}
             finding={span.finding}
             onClose={() => onOpen(null)}
-            onDismiss={() => onDismiss(id)}
+            onDismissed={onDismissed}
           />
         ) : null}
       </span>,
@@ -396,16 +408,20 @@ function Suggestion({
   sectionKey,
   finding,
   onClose,
-  onDismiss,
+  onDismissed,
 }: {
   grantId: string;
   sectionKey: string;
   finding: Finding;
   onClose: () => void;
-  onDismiss: () => void;
+  onDismissed: () => void;
 }) {
   const [state, apply, applying] = useActionState<EditorResult, FormData>(
     applyFindingAction,
+    null,
+  );
+  const [dismissState, dismiss, dismissing] = useActionState<EditorResult, FormData>(
+    dismissFindingAction,
     null,
   );
   const ref = useRef<HTMLDivElement>(null);
@@ -455,6 +471,12 @@ function Suggestion({
         </p>
       ) : null}
 
+      {dismissState && !dismissState.ok ? (
+        <p className="field-error" role="alert">
+          {dismissState.message}
+        </p>
+      ) : null}
+
       <div className="row">
         {replaceable ? (
           <form action={apply}>
@@ -469,9 +491,18 @@ function Suggestion({
           </form>
         ) : null}
 
-        <button type="button" className="btn btn-ghost" onClick={onDismiss}>
-          Це не помилка
-        </button>
+        {/* A server action, so the judgement survives a reload — and so that
+            re-running the review does not raise a finding this person has
+            already rejected. */}
+        <form action={dismiss}>
+          <input type="hidden" name="grantId" value={grantId} />
+          <input type="hidden" name="sectionKey" value={sectionKey} />
+          <input type="hidden" name="category" value={finding.category} />
+          <input type="hidden" name="quote" value={finding.quote} />
+          <button type="submit" className="btn btn-ghost" disabled={dismissing}>
+            {dismissing ? "…" : "Це не помилка"}
+          </button>
+        </form>
       </div>
     </div>
   );

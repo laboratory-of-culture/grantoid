@@ -735,6 +735,7 @@ model ConceptDraft {
   promptFingerprint String?
 
   sections  ConceptSection[]
+  findings  ConceptFinding[]
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
@@ -783,4 +784,60 @@ enum SectionSource {
   HUMAN_EDITED
   /// Written by a person from scratch.
   HUMAN
+}
+
+/// One thing the reviewer flagged in one section.
+///
+/// Stored rather than held in the page, because producing these costs about a
+/// hundred seconds of the one local GPU and the first version threw them away
+/// on every reload — a person waited a minute and a half, navigated once, and
+/// had nothing. Everything else expensive in this product is written down with
+/// its provenance; there was no reason for this to be the exception.
+///
+/// Tied to the text it was found in through `sectionContentHash`. A finding
+/// points at a span of prose, and prose that has since been rewritten no longer
+/// has that span — showing the old finding against new text would underline
+/// whatever now sits at those offsets.
+model ConceptFinding {
+  id      String @id @default(cuid())
+  draftId String
+  draft   ConceptDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  /// Section slug, matching ConceptSection.key.
+  sectionKey String
+  /// sha256 of the section text this was found in. Stale findings are hidden.
+  sectionContentHash String
+
+  category   FindingCategory
+  /// The exact span, verified to occur in the section before it was stored.
+  quote      String @db.Text
+  whyUk      String @db.Text
+  /// Null where only the author can supply one — see the Finding type.
+  suggestionUk String? @db.Text
+  /// Whether a deterministic rule or the model raised it.
+  source     FindingSource
+
+  /// Set when a person said this one is not a problem. Kept rather than deleted:
+  /// re-running the review would otherwise raise it again, and a person who has
+  /// already rejected a finding should not have to reject it twice.
+  dismissedAt DateTime?
+  /// Set when the suggestion was applied to the text.
+  appliedAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([draftId, sectionKey])
+}
+
+enum FindingCategory {
+  UNSUPPORTED
+  VAGUE
+  MARKETING
+  OFF_TOPIC
+  LONG_SENTENCE
+}
+
+enum FindingSource {
+  RULE
+  AI
 }

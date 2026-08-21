@@ -6,6 +6,7 @@ import {
   ConceptGenerationFailed,
   approveConcept,
   approveSection,
+  dismissFinding,
   editSection,
   generateDraft,
   applyFinding,
@@ -296,6 +297,37 @@ export async function approveConceptAction(
 
   try {
     await approveConcept(organizationId, grantId, user.userId);
+  } catch (err) {
+    if (err instanceof ConceptGenerationFailed) return { ok: false, message: err.message };
+    throw err;
+  }
+
+  revalidatePath(`/hranty/${grantId}/redaktor`);
+  return { ok: true };
+}
+
+/**
+ * Mark one finding as not a problem.
+ *
+ * A server action rather than client state, because the judgement should
+ * survive a reload — and because re-running the review must not ask the person
+ * to make the same call twice.
+ */
+export async function dismissFindingAction(
+  _prev: EditorResult,
+  form: FormData,
+): Promise<EditorResult> {
+  const { organizationId } = await requireDb();
+  const grantId = String(form.get("grantId") ?? "");
+
+  try {
+    await dismissFinding(
+      organizationId,
+      grantId,
+      String(form.get("sectionKey") ?? ""),
+      String(form.get("category") ?? ""),
+      String(form.get("quote") ?? ""),
+    );
   } catch (err) {
     if (err instanceof ConceptGenerationFailed) return { ok: false, message: err.message };
     throw err;

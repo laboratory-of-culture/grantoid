@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CalendarClock } from "lucide-react";
 
-import { loadConcept } from "../../../../../packages/db/concepts";
+import { loadConcept, loadFindings } from "../../../../../packages/db/concepts";
 import { listDonorDocuments } from "../../../../../packages/db/donor-docs";
 import { DonorDocuments } from "./donor-docs";
 import { loadGrantForWriting } from "../../../../../packages/db/grant-header";
@@ -34,8 +34,12 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
   const grant = await loadGrantForWriting(organizationId, id);
   if (!grant) notFound();
 
-  const [concept, donorDocs, answeredFacts] = await Promise.all([
+  const [concept, findings, donorDocs, answeredFacts] = await Promise.all([
     loadConcept(organizationId, id),
+    // Read from storage rather than held in the page. The review costs about a
+    // hundred seconds of the one local GPU, and the first version lost it on
+    // every reload.
+    loadFindings(organizationId, id),
     listDonorDocuments(organizationId, id),
     db.organizationFact.count({
       // Registry keys only. Rows survive a key being retired from the registry,
@@ -118,7 +122,7 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
           section a person has been through — but a concept note is read as one
           argument, and boxing each paragraph hid whether the argument held. */}
       {concept ? (
-        <ConceptDocument grantId={id} concept={concept} />
+        <ConceptDocument grantId={id} concept={concept} findings={findings} />
       ) : (
         <EmptyConcept grantId={id} />
       )}

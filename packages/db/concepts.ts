@@ -11,6 +11,8 @@
  * `HUMAN_EDITED`, and approval is an explicit act with its own timestamp.
  */
 
+import { createHash } from "node:crypto";
+
 import { generateConcept } from "../../agents/concept";
 import { MAX_INSTRUCTION_CHARS, suggestRevision } from "../../agents/assistant";
 import { reviewSection } from "../../agents/reviewer";
@@ -451,11 +453,124 @@ export async function reviewConceptSection(
   // A model failure degrades the review to its rules half rather than failing
   // it. Half a review is worth having; an error message instead of the
   // superlatives it would have caught is not.
-  return {
-    sectionKey: key,
-    findings: [...fromRules, ...run.findings],
-    dropped: run.dropped,
-  };
+  const findings = [...fromRules, ...run.findings];
+  await storeFindings(draft.id, key, section.content, findings);
+
+  return { sectionKey: key, findings, dropped: run.dropped };
+}
+
+/** sha256 of a section's text, so a finding can be tied to the words it read. */
+export function sectionHash(content: string): string {
+  return createHash("sha256").update(content).digest("hex");
+}
+
+/**
+ * Write this section's findings down, replacing the previous run's.
+ *
+ * A dismissal outlives the run that produced it. Somebody who has already said
+ * «це не помилка» about a sentence should not be asked again every time the
+ * review is re-run, so the quotes they rejected are carried forward and the new
+ * findings that match one are stored dismissed.
+ */
+async function storeFindings(
+  draftId: string,
+  sectionKey: string,
+  content: string,
+  findings: readonly Finding[],
+): Promise<void> {
+  const hash = sectionHash(content);
+
+  const dismissed = new Set(
+    (
+      await prisma.conceptFinding.findMany({
+        where: { draftId, sectionKey, dismissedAt: { not: null } },
+        select: { category: true, quote: true },
+      })
+    ).map((f) => `${f.category}:${f.quote}`),
+  );
+
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.conceptFinding.deleteMany({ where: { draftId, sectionKey } }),
+    prisma.conceptFinding.createMany({
+      data: findings.map((f) => ({
+        draftId,
+        sectionKey,
+        sectionContentHash: hash,
+        category: f.category,
+        quote: f.quote,
+        whyUk: f.whyUk,
+        suggestionUk: f.suggestionUk,
+        source: f.source,
+        dismissedAt: dismissed.has(`${f.category}:${f.quote}`) ? now : null,
+      })),
+    }),
+  ]);
+}
+
+/**
+ * The findings stored for one draft, minus the ones that no longer apply.
+ *
+ * Two things hide a finding: a person dismissed it, or the section has been
+ * rewritten since it was found. The second is why the hash is stored — a
+ * finding points at a span of prose, and prose that changed no longer has that
+ * span. Showing it anyway would underline whatever now sits at those offsets.
+ */
+export async function loadFindings(
+  organizationId: string,
+  grantId: string,
+): Promise<Record<string, Finding[]>> {
+  const db = forOrganization(organizationId);
+  const draft = await db.conceptDraft.findFirst({
+    where: { grantId },
+    include: { sections: true, findings: { where: { dismissedAt: null } } },
+  });
+  if (!draft) return {};
+
+  const hashes = new Map(draft.sections.map((s) => [s.key, sectionHash(s.content)]));
+
+  const bySection: Record<string, Finding[]> = {};
+  for (const row of draft.findings) {
+    if (hashes.get(row.sectionKey) !== row.sectionContentHash) continue;
+    (bySection[row.sectionKey] ??= []).push({
+      quote: row.quote,
+      category: row.category,
+      whyUk: row.whyUk,
+      suggestionUk: row.suggestionUk,
+      source: row.source,
+    });
+  }
+  return bySection;
+}
+
+/**
+ * Mark one finding as not a problem.
+ *
+ * Stored rather than kept in the page, for the same reason the findings are:
+ * a judgement a person made should survive a reload, and re-running the review
+ * should not ask them to make it again.
+ */
+export async function dismissFinding(
+  organizationId: string,
+  grantId: string,
+  sectionKey: string,
+  category: string,
+  quote: string,
+): Promise<void> {
+  const db = forOrganization(organizationId);
+  const draft = await db.conceptDraft.findFirst({ where: { grantId }, select: { id: true } });
+  if (!draft) throw new ConceptGenerationFailed("Чернетки ще немає.");
+
+  await prisma.conceptFinding.updateMany({
+    where: {
+      draftId: draft.id,
+      sectionKey,
+      quote,
+      category: category as Finding["category"],
+      dismissedAt: null,
+    },
+    data: { dismissedAt: new Date() },
+  });
 }
 
 /**

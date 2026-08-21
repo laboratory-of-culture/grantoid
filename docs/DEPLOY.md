@@ -251,6 +251,16 @@ docker run --rm -v grant-assistant_storage:/data -v /backup:/backup \
 - **Лишати `admin-credentials.txt` і `test-credentials.txt` на сервері.**
 - **Запускати `seed:demo` у продакшені.** Він створює обліковий запис із відомим
   паролем і теж відмовляється при `NODE_ENV=production`.
+- **Лишати `DATABASE_URL` без `connection_limit`.** Prisma тоді бере пул розміру
+  `ядра × 2 + 1` **на кожен процес**, а на цій машині процесів кілька: застосунок,
+  нічний прогін, те, що оператор запустив руками. На 16 ядрах це ~33 з'єднання
+  кожен проти типових `max_connections = 100` у Postgres. Ліміт вичерпувався у
+  розробці, і симптом був оманливий: не помилка застосунку, а мовчазно
+  пропущені тести й `psql`, який сам не міг під'єднатися.
+
+  ```
+  DATABASE_URL="postgresql://…/grant_assistant?schema=public&connection_limit=5"
+  ```
 
 ## 8. Чекліст перед запуском
 
@@ -258,6 +268,7 @@ docker run --rm -v grant-assistant_storage:/data -v /backup:/backup \
 - [ ] `APP_BASE_URL` — справжній домен
 - [ ] TLS працює, HTTP редіректить на HTTPS
 - [ ] Порт 5432 недоступний ззовні — перевірено з іншої машини
+- [ ] `DATABASE_URL` містить `connection_limit`
 - [ ] `admin-credentials.txt` забрано з сервера
 - [ ] Тестові записи видалено: `DELETE FROM "Grant" WHERE synthetic = true`
 - [ ] Резервна копія зроблена **і відновлена** на порожню базу хоча б раз
