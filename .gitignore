@@ -59,3 +59,6 @@ public/_preview/
 
 # Weekly digest. Written to .mail/ when SMTP is not configured.
 .mail/
+
+# Development-only UI audit, served from public/ and never shipped.
+public/_audit.js

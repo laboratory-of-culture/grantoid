@@ -130,6 +130,12 @@ body {
   justify-content: flex-start;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
+  /* A hit area, not a look. Measured: the icon-only ghost buttons on the
+   * profile were 34×42, fifteen of them in a column, each one a target for a
+   * finger on a phone. The minimum costs two pixels of height on every other
+   * button and nothing at all on the wide ones. */
+  min-block-size: var(--tap-min);
+  min-inline-size: var(--tap-min);
   border: var(--border);
   border-radius: var(--radius-sm);
   background: transparent;
@@ -238,8 +244,25 @@ body {
 .input::placeholder { color: var(--color-neutral-500); }
 .input[aria-invalid="true"] { border-color: var(--color-accent-600); }
 
-.radio { display: flex; align-items: flex-start; gap: var(--space-3); }
-.radio input { margin: 0; accent-color: var(--color-accent); }
+/* The label is the target, not the box. A 13px checkbox is what the browser
+ * draws; what a person presses is the whole row, so that is what has to clear
+ * the minimum. */
+.radio {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: var(--tap-min);
+  cursor: pointer;
+}
+.radio input {
+  margin: 0;
+  /* Bigger than the 13px default, which is small enough to miss even with the
+   * label catching the press. */
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
 
 /* Segmented control. Cells are equal width, joined by shared rules. */
 .seg {
@@ -363,7 +386,18 @@ body {
 
 /* ------------------------------------------------------------------ table */
 
-.table-wrap { overflow-x: auto; }
+/* A table too wide for its column scrolls inside itself.
+ *
+ * `overflow-x` alone does not do it. A grid or flex child defaults to
+ * `min-width: auto`, which is its content's intrinsic width — so the wrapper
+ * grows to fit the table instead of clipping it, no scrollbar appears, and the
+ * page goes sideways. Measured on the donor-documents table: 446px of table in
+ * a 390px column, wrapper 446px wide, nothing scrolling. */
+.table-wrap {
+  overflow-x: auto;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
 
 .table {
   width: 100%;
@@ -421,6 +455,9 @@ body {
 }
 
 .wordmark {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--tap-min);
   font-size: var(--text-md);
   font-weight: var(--weight-black);
   letter-spacing: var(--tracking-display);
@@ -455,7 +492,10 @@ body {
 }
 
 @media (max-width: 900px) {
-  .shell-body { grid-template-columns: 1fr; }
+  /* minmax(0, 1fr), not 1fr. A bare `1fr` is `minmax(auto, 1fr)`, and the auto
+     floor is the content's intrinsic width — one wide table and the single
+     column stops being one column wide. */
+  .shell-body { grid-template-columns: minmax(0, 1fr); }
   .nav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: var(--border); }
   .nav a { border-bottom: 0; border-right: var(--border-quiet); white-space: nowrap; }
 }
