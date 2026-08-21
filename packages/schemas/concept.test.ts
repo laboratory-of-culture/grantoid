@@ -95,3 +95,23 @@ describe("unsupportedNumbers — magnitudes written as words", () => {
     ]);
   });
 });
+
+describe("unsupportedNumbers — percentages", () => {
+  it("flags a two-digit percentage the sources do not support", () => {
+    // All three verbatim from live drafts. Each promises measurable impact to a
+    // funder, and each was two digits long and therefore invisible.
+    expect(unsupportedNumbers("зменшить втрати на 20%", [])).toEqual(["20%"]);
+    expect(unsupportedNumbers("активність збільшиться на 30%", [])).toEqual(["30%"]);
+  });
+
+  it("accepts a percentage the call states", () => {
+    const sources = ["Співфінансування — не менше 20% від бюджету проєкту."];
+    expect(unsupportedNumbers("співфінансування 20%", sources)).toEqual([]);
+  });
+
+  it("still ignores a bare two-digit number", () => {
+    // «14–25 років» from a call, «2 з 3 партнерів» in a sentence: ordinals and
+    // list counts, not claims.
+    expect(unsupportedNumbers("вік учасників 14–25 років", [])).toEqual([]);
+  });
+});

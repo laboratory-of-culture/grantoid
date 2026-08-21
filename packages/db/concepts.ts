@@ -24,6 +24,7 @@ import {
   unreviewedSections,
   unsupportedNumbers,
 } from "../schemas/concept";
+import { CONCEPT_PREREQUISITES, factDefinition } from "../schemas/fact-registry";
 import { renderProfileText } from "../schemas/profile-text";
 import { ruleFindings, verifiedFindings, type Finding } from "../schemas/writing-checks";
 import { toGrant, toProfile } from "../matching/adapters";
@@ -147,6 +148,23 @@ export async function generateDraft(
     where: { id: grantId },
     include: { rules: { include: { citations: true } } },
   });
+
+  // Nothing to compose from is not a thin draft — it is fiction with the
+  // organization's name on it. See CONCEPT_PREREQUISITES for the draft that
+  // proved it: an empty profile produced an agricultural NGO with a twenty
+  // per cent target and prior experience, none of which existed.
+  const answered = new Set(
+    orgRow.facts.filter((f) => f.state !== "UNKNOWN").map((f) => f.key),
+  );
+  const missing = CONCEPT_PREREQUISITES.filter((key) => !answered.has(key));
+  if (missing.length === CONCEPT_PREREQUISITES.length) {
+    const labels = missing.map((k) => factDefinition(k)?.labelUk ?? k);
+    throw new ConceptGenerationFailed(
+      "Профіль порожній, тож писати нема з чого — модель вигадала б і напрями " +
+        "діяльності, і досвід. Заповніть у профілі: " +
+        `${labels.join(", ")} — і поверніться сюди.`,
+    );
+  }
 
   const existing = await db.conceptDraft.findFirst({
     where: { grantId },

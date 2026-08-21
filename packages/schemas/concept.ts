@@ -188,10 +188,24 @@ export function unsupportedNumbers(text: string, sources: readonly string[]): st
     found.add(match[0].replace(/\s+/g, " ").trim());
   }
 
+  // A percentage is always a claim, however short.
+  //
+  // The length rule below skips one- and two-digit numbers because they are
+  // usually ordinals or list counts. A percentage never is: «зменшить втрати на
+  // 20%», «кількість активних ветеранів збільшиться на 30%», «тренерів — на
+  // 50%» all came out of live drafts, all promised measurable impact to a
+  // funder, and all slipped through for being two digits long.
+  for (const match of text.matchAll(/(\d+(?:[.,]\d+)?)\s*%/g)) {
+    const whole = match[0].replace(/\s+/g, "");
+    if (haystack.includes(whole) || haystack.includes(`${match[1]}%`)) continue;
+    found.add(whole);
+  }
+
   for (const match of text.matchAll(/\d[\d\s'’ ]*\d|\d/g)) {
     const digits = match[0].replace(/[\s'’ ]/g, "");
     // One- and two-digit numbers are usually ordinals, list counts or years in
-    // a phrase like "14–25 років" that came from the call. Too noisy to flag.
+    // a phrase like "14–25 років" that came from the call. Too noisy to flag —
+    // except as a percentage, handled above.
     if (digits.length < 3) continue;
     if (haystack.includes(digits)) continue;
     found.add(digits);

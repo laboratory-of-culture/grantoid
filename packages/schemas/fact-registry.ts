@@ -223,3 +223,31 @@ export const FactKey = z.string().refine((k) => BY_KEY.has(k), {
  * Without it, existing orgs have an absent row rather than a stored UNKNOWN,
  * and the eligibility agent loses the distinction D4 exists to preserve.
  */
+
+/**
+ * The facts a concept note cannot be written without.
+ *
+ * Not a completeness score — a floor. These three say what the organization
+ * does, for whom, and where, and every section of a concept note rests on at
+ * least one of them. With none of them answered there is no subject matter, and
+ * a model asked to write anyway does not stop: it invents one.
+ *
+ * It did. A brand-new organization with an empty profile produced a draft about
+ * «недостатнє забезпечення доступу до сільськогосподарських ресурсів», a target
+ * of «зменшити втрати у сільському господарстві на 20%», and a capacity section
+ * reading «ГО «Сила Руху» має досвід у роботі з місцевими громадами та
+ * сільськогосподарськими ресурсами. Організація вже проводить навчальні сесії».
+ * None of it came from anywhere. Three of the eight sections closed with
+ * «Ніяких конкретних даних не надано» while asserting agricultural expertise in
+ * the same paragraph.
+ *
+ * The number check missed it, correctly by its own rules: «20%» is two digits
+ * and two-digit numbers are ordinals and list counts far more often than they
+ * are claims. Nothing catches a fabricated sentence with no digits in it, which
+ * is why this is a precondition rather than another output filter.
+ */
+export const CONCEPT_PREREQUISITES = [
+  "activity_areas",
+  "target_audiences",
+  "geographic_coverage",
+] as const;
