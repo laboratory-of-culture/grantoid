@@ -48,6 +48,25 @@ const name = (el) =>
 export function audit() {
   const out = { contrast: [], targets: [], names: [], focus: [], overflow: {}, meta: {} };
 
+  // Is this a page at all?
+  //
+  // Checked first because the audit once reported `clean: true` on «Application
+  // error: a server-side exception has occurred» — every measurement passed,
+  // because an error page has nothing to measure. A tool that says the page is
+  // fine when the page is not there is worse than no tool.
+  const body = document.body.innerText ?? "";
+  const broken =
+    body.includes("Application error") ||
+    body.includes("server-side exception") ||
+    document.querySelector("[data-nextjs-dialog], #__next_error__") !== null ||
+    body.trim().length < 40;
+  if (broken) {
+    return JSON.stringify({
+      meta: { url: location.pathname, clean: false, broken: true },
+      error: body.trim().slice(0, 200) || "(page rendered nothing)",
+    });
+  }
+
   // Contrast, on text nodes rather than containers: a div whose colour fails but
   // which paints no text of its own is not a finding.
   for (const el of document.querySelectorAll("body *")) {
