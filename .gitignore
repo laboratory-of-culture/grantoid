@@ -62,3 +62,4 @@ public/_preview/
 
 # Development-only UI audit, served from public/ and never shipped.
 public/_audit.js
+public/_preview.pdf
