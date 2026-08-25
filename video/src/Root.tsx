@@ -1,8 +1,6 @@
 import React from "react";
 import { Composition } from "remotion";
 
-import "./font";
-
 import { MainVideo, TOTAL_FRAMES } from "./MainVideo";
 import { VIDEO } from "./theme";
 

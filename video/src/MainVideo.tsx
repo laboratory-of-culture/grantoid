@@ -1,6 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Series } from "remotion";
 
+import { FontFaceStyle } from "./font";
 import { Editor } from "./scenes/Editor";
 import { Evidence } from "./scenes/Evidence";
 import { Feed } from "./scenes/Feed";
@@ -41,6 +42,10 @@ export const TOTAL_FRAMES = SCENES.reduce((sum, s) => sum + s.d, 0);
 
 export const MainVideo: React.FC = () => (
   <AbsoluteFill style={{ background: theme.ground }}>
+    {/* Inside the composition, not beside it: only what the composition renders
+        reaches a frame, and a font declared in the Root would be absent from
+        every one of them. */}
+    <FontFaceStyle />
     <Series>
       {SCENES.map((s, i) => {
         const Comp = s.c;
