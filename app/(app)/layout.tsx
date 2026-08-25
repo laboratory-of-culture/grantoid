@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Building2, FileText, LogOut, Search } from "lucide-react";
 
 import { BetaBanner } from "../components/beta";
+import { Funders } from "../components/funders";
 import { requireDb } from "../lib/session";
 import { signOutAction } from "../(auth)/actions";
 
@@ -79,7 +80,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           )}
         </nav>
 
-        <main className="shell-main">{children}</main>
+        <main className="shell-main">
+          {children}
+          {/* Inside the main column, not below the shell: a footer that spans
+              under the navigation sits at a different left edge from every
+              other line on the page, and this system is flush left. */}
+          <Funders />
+        </main>
       </div>
     </div>
   );

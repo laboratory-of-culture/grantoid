@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { Funders } from "../components/funders";
+
 /**
  * Sign-in and registration. No navigation: offering links to screens the
  * visitor cannot open yet is a small lie, and the only thing to do here is the
@@ -14,7 +16,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </Link>
         <span className="kicker">для українських громадських організацій</span>
       </header>
-      <main className="auth-main">{children}</main>
+      <main className="auth-main">
+        {children}
+        <Funders />
+      </main>
     </div>
   );
 }

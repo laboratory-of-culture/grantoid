@@ -879,6 +879,46 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------------------------------------------------------------- funders */
+
+/* The funding attribution, on every page.
+ *
+ * A rule above it rather than a filled band: the system separates with lines,
+ * and a grey box at the bottom of every screen reads as chrome to be skipped —
+ * which is the opposite of what a visibility requirement is for. */
+.funders {
+  margin-top: var(--space-7);
+  padding: var(--space-5) 0 var(--space-6);
+  border-top: var(--border);
+}
+
+/* Wraps rather than shrinks. The three marks keep their optical size and drop
+ * onto a second row on a narrow screen; scaling them down together is how the
+ * EU emblem ends up too small to be an emblem. */
+.funders-marks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-6);
+  margin-bottom: var(--space-4);
+}
+
+/* Height fixed, width from the file's own ratio — the three are different
+ * shapes and matching their widths would make the narrow one enormous. */
+.funders-mark {
+  height: var(--space-7);
+  width: auto;
+  max-width: 100%;
+}
+
+.funders-text {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  color: var(--color-text-muted);
+}
+
 /* ------------------------------------------------------------------ media */
 
 /* Photographs are grayscale, never tinted. */
