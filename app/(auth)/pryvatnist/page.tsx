@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Політика приватності — Grant Assistant" };
+export const metadata = { title: "Політика приватності — грантоЇД.АІ" };
 
 /**
  * The privacy policy.
@@ -20,7 +20,7 @@ export default function PrivacyPage() {
       <h1 className="h1">Що ми робимо з вашими даними</h1>
 
       <p className="prose">
-        Grant Assistant працює з документами громадських організацій — статутами, звітами,
+        грантоЇД.АІ працює з документами громадських організацій — статутами, звітами,
         попередніми заявками. Нижче написано, що з ними відбувається. Без загальних слів: якщо
         тут чогось не сказано, значить ми цього не робимо.
       </p>

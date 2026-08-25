@@ -74,7 +74,7 @@ export async function GET(
       // banner. No sentence-ending period after the date: formatDateUk already
       // closes with «р.».
       text:
-        "Підготовлено за допомогою Grant Assistant, " +
+        "Підготовлено за допомогою грантоЇД.АІ, " +
         (unread.length === 0
           ? `прочитано людиною ${formatDateUk(concept.updatedAt)} `
           : `останні зміни ${formatDateUk(concept.updatedAt)} `) +

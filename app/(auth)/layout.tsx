@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Funders } from "../components/funders";
+import { Wordmark } from "../components/wordmark";
 
 /**
  * Sign-in and registration. No navigation: offering links to screens the
@@ -12,9 +13,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="shell">
       <header className="shell-head">
         <Link href="/vhid" className="wordmark">
-          Grant Assistant
+          <Wordmark full />
         </Link>
-        <span className="kicker">для українських громадських організацій</span>
+        {/* The tagline, on the one screen where the product introduces itself.
+            The signed-in shell shows the organization's own name here instead —
+            a person who is already inside does not need to be told what the
+            thing is. */}
+        <span className="kicker">грантовий асистент зі штучним інтелектом</span>
       </header>
       <main className="auth-main">
         {children}

@@ -1,4 +1,6 @@
 import Link from "next/link";
+
+import { Wordmark } from "../components/wordmark";
 import { LogOut, Radio } from "lucide-react";
 
 import { requireAdmin } from "../lib/session";
@@ -18,7 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="shell">
       <header className="shell-head">
         <Link href="/dzherela" className="wordmark">
-          Grant Assistant
+          <Wordmark />
         </Link>
         <span className="tag tag-accent">Адміністрування</span>
         <span className="kicker">{user.email}</span>

@@ -3,6 +3,7 @@ import { Building2, FileText, LogOut, Search } from "lucide-react";
 
 import { BetaBanner } from "../components/beta";
 import { Funders } from "../components/funders";
+import { Wordmark } from "../components/wordmark";
 import { requireDb } from "../lib/session";
 import { signOutAction } from "../(auth)/actions";
 
@@ -49,7 +50,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="shell">
       <header className="shell-head">
         <Link href="/profil" className="wordmark">
-          Grant Assistant
+          <Wordmark />
         </Link>
         <span className="kicker">{user.organizationName}</span>
         <form action={signOutAction} className="shell-head-end">

@@ -109,9 +109,12 @@ export function renderDigestHtml(digest: Digest, organizationName: string): stri
                style="max-width:560px;background:${SURFACE};border:2px solid ${INK};">
           <tr>
             <td style="padding:24px 24px 0;">
+              <!-- The mark, in the one form email can carry it. No span with a
+                   different colour: Outlook drops nested inline styles often
+                   enough that the joke would land half the time. -->
               <div style="font-family:${MONO};font-size:12px;letter-spacing:0.1em;
                           text-transform:uppercase;color:${MUTED};">
-                Grant Assistant
+                грантоЇД.АІ
               </div>
               <h1 style="margin:8px 0 4px;font-family:${SANS};font-size:22px;
                          font-weight:800;line-height:1.2;color:${INK};">

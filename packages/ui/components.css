@@ -454,6 +454,25 @@ body {
   border-bottom: var(--border);
 }
 
+/* The mark. «грантоЇД» is a reclaimed insult and the second half is the joke,
+ * so «ЇД» carries the accent — the word says «eater» rather than hoping the
+ * reader spots it. The capital Ї is the other half of the point: a letter
+ * Russian does not have, at the centre of a reproach about foreign influence. */
+.wordmark-text { white-space: nowrap; }
+
+/* accent-700, not the brand accent. tokens.css says it plainly: 500 clears 3:1
+ * and is for a rule, an icon or a large heading. The mark is 17px — under the
+ * 18.66px that makes bold text «large» — so it needs 4.5:1 and the brand accent
+ * gives 3.76. Measured on the page, not assumed. */
+.wordmark-bite { color: var(--color-accent-700); }
+
+/* Quieter and lighter than the name it trails. A suffix set at the same weight
+ * reads as part of the word, and «.AI» is a qualifier, not a syllable. */
+.wordmark-suffix {
+  font-weight: var(--weight-medium);
+  color: var(--color-text-muted);
+}
+
 .wordmark {
   display: inline-flex;
   align-items: center;
