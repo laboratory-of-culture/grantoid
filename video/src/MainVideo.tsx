@@ -2,40 +2,44 @@ import React from "react";
 import { AbsoluteFill, Series } from "remotion";
 
 import { FontFaceStyle } from "./font";
-import { Editor } from "./scenes/Editor";
-import { Evidence } from "./scenes/Evidence";
-import { Feed } from "./scenes/Feed";
 import { Funding } from "./scenes/Funding";
 import { Intro } from "./scenes/Intro";
-import { Ladder } from "./scenes/Ladder";
-import { Local } from "./scenes/Local";
-import { Problem } from "./scenes/Problem";
-import { Refuses } from "./scenes/Refuses";
+import { StepBreakdown } from "./scenes/StepBreakdown";
+import { StepDocuments } from "./scenes/StepDocuments";
+import { StepDonorPdf } from "./scenes/StepDonorPdf";
+import { StepDraft } from "./scenes/StepDraft";
+import { StepFeed } from "./scenes/StepFeed";
+import { StepProfile } from "./scenes/StepProfile";
+import { StepReview } from "./scenes/StepReview";
+import { StepSave } from "./scenes/StepSave";
 import { theme } from "./theme";
 
 /**
- * The whole video: eight scenes, about eighty seconds.
+ * A walkthrough, in the order somebody actually does the work.
  *
- * Ordered as an argument rather than a feature tour. The problem is reading,
- * not searching; the feed answers the reading; the ladder and the evidence are
- * why the answer can be trusted; the editor is what you do with it; the
- * refusals are the proof that the trust is earned; and the last two say where
- * your documents live and who paid for the thing.
+ * Fill the profile, feed it documents, read the feed, open one call, give it
+ * the donor's own terms, generate, review, save. Ten scenes, about ninety
+ * seconds.
  *
- * Durations are generous. Every scene has to be readable at a glance by
- * somebody who is not a native reader of software marketing — and the copy is
- * Ukrainian prose, which needs longer on screen than an English tagline.
+ * Four of the eight steps show captures of the running product rather than
+ * recreations. A guide has to show the buttons a person is going to look for,
+ * with the labels they actually carry.
+ *
+ * Durations are long for a promotional video and right for an instructional
+ * one. Each step has a headline, a paragraph and a caution to read, in
+ * Ukrainian, which needs more time on screen than an English tagline.
  */
 export const SCENES = [
-  { c: Intro, d: 180 }, //     6.0s — the name lands
-  { c: Problem, d: 270 }, //   9.0s — three lines to read
-  { c: Feed, d: 285 }, //      9.5s — four columns of numbers
-  { c: Ladder, d: 300 }, //   10.0s — five rungs, the middle one is the point
-  { c: Evidence, d: 315 }, // 10.5s — two quotations, the densest scene
-  { c: Editor, d: 300 }, //   10.0s — a sentence, then the note over it
-  { c: Refuses, d: 285 }, //   9.5s — three struck-through claims
-  { c: Local, d: 255 }, //     8.5s
-  { c: Funding, d: 240 }, //   8.0s — the card a viewer pauses on
+  { c: Intro, d: 165 }, //           5.5s
+  { c: StepProfile, d: 330 }, //    11.0s
+  { c: StepDocuments, d: 315 }, //  10.5s
+  { c: StepFeed, d: 330 }, //       11.0s
+  { c: StepBreakdown, d: 315 }, //  10.5s
+  { c: StepDonorPdf, d: 315 }, //   10.5s
+  { c: StepDraft, d: 285 }, //       9.5s
+  { c: StepReview, d: 330 }, //     11.0s
+  { c: StepSave, d: 315 }, //       10.5s
+  { c: Funding, d: 210 }, //         7.0s
 ] as const;
 
 export const TOTAL_FRAMES = SCENES.reduce((sum, s) => sum + s.d, 0);

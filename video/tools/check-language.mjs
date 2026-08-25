@@ -16,17 +16,35 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 
-/** Latin words that belong in Ukrainian copy: names, and terms used as-is. */
+/**
+ * Latin words that belong in Ukrainian copy.
+ *
+ * Two kinds only: proper nouns, and technical terms Ukrainian borrows whole.
+ * A file format is not translated in Ukrainian technical writing, and neither
+ * is API. Everything else on screen should be Ukrainian, so keep this list
+ * short and add to it deliberately.
+ */
 const ALLOWED = new Set([
+  // Names
   "Creative",
   "Democracy",
   "Boost",
   "EED",
   "Stanley",
+  "Perform",
+  "Europe",
+  "Open",
+  "Call",
+  "Guidelines",
   "Word",
-  "RTF",
+  // Borrowed whole
   "AI",
   "API",
+  "PDF",
+  "DOCX",
+  "DOC",
+  "TXT",
+  "RTF",
 ]);
 
 function walk(dir) {
