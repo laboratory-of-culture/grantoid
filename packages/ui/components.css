@@ -608,6 +608,14 @@ body {
 
 .stat-label { font-size: var(--text-sm); color: var(--color-text-muted); }
 
+/* A count that means something is wrong rather than something is happening.
+ * accent-700, not the brand accent: this sits at text size, where 500 clears
+ * 3:1 and needs 4.5. */
+.stat-warn { color: var(--color-accent-700); }
+
+/* Stats in a row need air between them, or three numbers read as one. */
+.row > .stat + .stat { margin-inline-start: var(--space-4); }
+
 /* A plain proportional bar. No gradient, no rounded cap. */
 .meter {
   height: var(--space-2);

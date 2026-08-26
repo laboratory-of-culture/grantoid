@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Wordmark } from "../components/wordmark";
-import { LogOut, Radio } from "lucide-react";
+import { Building2, LogOut, Radio } from "lucide-react";
 
 import { requireAdmin } from "../lib/session";
 import { signOutAction } from "../(auth)/actions";
@@ -33,8 +33,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </header>
 
       <div className="shell-body">
+        {/* Two destinations, and they answer different questions. The registry
+            is about what the product reads; the organizations screen is about
+            whether any of it is reaching anybody. `aria-current` is gone: it was
+            hard-coded on the sources link and lied on every other page. */}
         <nav className="nav" aria-label="Адміністрування">
-          <Link href="/dzherela" aria-current="page">
+          <Link href="/orhanizatsiyi">
+            <Building2 size={16} aria-hidden="true" />
+            Організації
+          </Link>
+          <Link href="/dzherela">
             <Radio size={16} aria-hidden="true" />
             Джерела
           </Link>
