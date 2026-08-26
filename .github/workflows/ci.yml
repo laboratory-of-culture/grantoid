@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Re-deploy the current main without a commit — after a server rebuild, or
+  # after unshelving the GPU instance.
+  workflow_dispatch:
 
 jobs:
   check:
@@ -65,3 +68,113 @@ jobs:
       # deadline, then another.
       - name: Modernist tokens
         run: node scripts/audit-tokens.mjs
+
+  # Викладення на OVHcloud.
+  #
+  # `needs: check` is the whole point: the run that verified is the run that
+  # deploys, so nothing reaches the server that has not passed the ladder, the
+  # tests and the token audit. Guard the `production` environment with a
+  # required reviewer in the repository settings and this also becomes a
+  # deliberate button rather than a consequence of merging.
+  #
+  # Secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS.
+  # See docs/OVHCLOUD.md for how each is produced.
+  deploy:
+    name: Викласти
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: production
+    # Two deploys at once would race on the same working copy and the same
+    # migration lock.
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+
+    steps:
+      - name: Ключ і відбиток хоста
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # A pinned fingerprint, not StrictHostKeyChecking=no. Turning the
+          # check off is how a deploy pipeline hands its key to whoever answers
+          # on port 22 today.
+          echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Зібрати, мігрувати, підняти
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" "SHA=${{ github.sha }} bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd /opt/grant-assistant
+
+          git fetch --prune origin
+          git reset --hard "$SHA"
+
+          COMPOSE="docker compose -f docker-compose.prod.yml"
+
+          # Migrations run against the new code but before the old container is
+          # replaced, so a migration that fails leaves the previous version
+          # serving. This only holds while migrations stay additive; one that
+          # drops a column breaks the running app the moment it lands, and that
+          # is a deploy to do by hand with the site down.
+          $COMPOSE build app
+          $COMPOSE run --rm app npx prisma migrate deploy
+          $COMPOSE up -d
+
+          # `up -d` returning is not the app answering. It has to answer.
+          for _ in $(seq 1 30); do
+            if curl -fsS -o /dev/null http://127.0.0.1:3000/; then
+              echo "застосунок відповідає на 127.0.0.1:3000"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "застосунок не відповів за 60 секунд" >&2
+          $COMPOSE logs --tail 60 app >&2
+          exit 1
+          REMOTE
+
+      - name: Як відкотити
+        if: failure()
+        run: |
+          echo "Відкат: зайдіть на сервер і виконайте"
+          echo "  cd /opt/grant-assistant"
+          echo "  git reset --hard <попередній sha>"
+          echo "  docker compose -f docker-compose.prod.yml up -d --build"
+          echo "Міграції назад не відкочуються. Якщо впала саме міграція —"
+          echo "спершу подивіться, що вона встигла зробити."
+
+  # Runs after the deploy, and fails on its own. A red mark here means the
+  # server is up and something on it is wrong — credentials file left behind,
+  # synthetic grants in the database, a base URL still pointing at localhost.
+  # That is a different fact from a failed deploy and gets its own line.
+  preflight:
+    name: Передпольотна перевірка
+    needs: deploy
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Ключ і відбиток хоста
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: npm run preflight
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" "bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd /opt/grant-assistant
+          docker compose -f docker-compose.prod.yml run --rm app npx tsx scripts/preflight.ts
+          REMOTE

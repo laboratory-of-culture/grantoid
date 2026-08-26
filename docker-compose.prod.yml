@@ -53,7 +53,12 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-grant}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-grant_assistant}?schema=public
+      # connection_limit is not decoration. Without it Prisma opens
+      # cores x 2 + 1 connections per process, and this host runs several:
+      # the app, the nightly job, whatever an operator started by hand.
+      # docs/DEPLOY.md section 7 has the symptom, which is not an error
+      # message but silently skipped work.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-grant}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-grant_assistant}?schema=public&connection_limit=5
       OLLAMA_HOST: http://ollama:11434
       GRANT_AI_MODEL: ${GRANT_AI_MODEL:-qwen3:4b}
       GRANT_AI_NUM_CTX: ${GRANT_AI_NUM_CTX:-16384}
