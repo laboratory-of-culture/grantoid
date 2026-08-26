@@ -63,3 +63,6 @@ public/_preview/
 # Development-only UI audit, served from public/ and never shipped.
 public/_audit.js
 public/_preview.pdf
+
+# What the Stop hook last saw green. Per-machine state, not a shared fact.
+.claude/hooks/.last-verified
