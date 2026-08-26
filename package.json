@@ -22,7 +22,9 @@
     "audit:tokens": "node scripts/audit-tokens.mjs",
     "digest": "tsx scripts/send-digests.ts",
     "nightly": "tsx scripts/nightly.ts",
-    "audit:ui": "node -e \"require('fs').copyFileSync('scripts/audit-ui.mjs','public/_audit.js')\" && echo \"copied to public/_audit.js - in the browser: (await import('/_audit.js')).audit()\""
+    "audit:ui": "node -e \"require('fs').copyFileSync('scripts/audit-ui.mjs','public/_audit.js')\" && echo \"copied to public/_audit.js - in the browser: (await import('/_audit.js')).audit()\"",
+    "preflight": "tsx scripts/preflight.ts",
+    "purge:test": "tsx scripts/purge-test-data.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",
