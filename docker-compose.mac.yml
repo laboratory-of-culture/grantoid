@@ -1,0 +1,25 @@
+# Накладка для macOS: модель працює на хості, а не в контейнері.
+#
+# Docker Desktop на macOS — це Linux-VM без доступу до Metal, тож контейнер з
+# Ollama рахував би на CPU. Це приблизно вп'ятеро повільніше, і шестисекундна
+# правка в редакторі перетворюється на півхвилини. Ollama ставиться нативно, а
+# застосунок дотягується до неї через межу віртуалки.
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.mac.yml up -d db app
+#
+# `db app` наприкінці не декорація. Накладка не вміє видаляти сервіс, тож без
+# явного переліку піднявся б і `ollama` — контейнер, який слухає той самий порт
+# усередині мережі compose і рахує на CPU. Симптом був би не помилкою, а просто
+# повільною системою, і шукали б ви його довго.
+#
+# Решта — db, том зі сховищем, порт лише на 127.0.0.1 — лишається з
+# docker-compose.prod.yml без змін.
+
+services:
+  app:
+    environment:
+      # host.docker.internal — це адреса хоста з середини VM. Docker Desktop дає
+      # її сам; Colima й OrbStack потребують запису нижче.
+      OLLAMA_HOST: http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
