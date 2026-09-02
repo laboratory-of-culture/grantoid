@@ -23,6 +23,7 @@ import {
   type Assessed,
 } from "../../packages/schemas/ladder";
 import { MatchResult, MatchResultShape } from "../../packages/schemas/match";
+import { factDefinition } from "../../packages/schemas/fact-registry";
 import { stripEnums } from "../../packages/schemas/locale-uk";
 import { factSentence, renderProfileText } from "../../packages/schemas/profile-text";
 import type { Grant } from "../../packages/schemas/grant";
@@ -295,9 +296,22 @@ function applyEvidenceConstraints(
           : `"${factKey}" is ${state}; only EXPLICIT_NEGATIVE supports NOT_ELIGIBLE`,
     });
 
+    // The model produced a verdict its evidence did not support, so its
+    // explanation is not to be trusted either — on an empty geography field it
+    // has written «згідно з профілем, організація зареєстрована в Чернівецькій
+    // області», a region the profile never mentions. When the reason for the
+    // correction is a missing fact, the rationale is replaced with a plain
+    // statement of that, not left as the model wrote it.
+    const label = factDefinition(factKey)?.labelUk ?? factKey;
+    const rationale =
+      state === "UNKNOWN"
+        ? `У профілі немає відповіді на питання «${label}», тож цей критерій не визначено.`
+        : c.rationale;
+
     return {
       ...c,
       verdict: to,
+      rationale,
       uncertaintyReason: to === "UNCERTAIN" ? ("NO_PROFILE_DATA" as const) : null,
       missingInformation:
         to === "UNCERTAIN"
