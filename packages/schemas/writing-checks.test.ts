@@ -84,6 +84,39 @@ describe("ruleFindings — sentence length", () => {
   });
 });
 
+describe("ruleFindings — padding", () => {
+  it("flags a significance claim bolted onto a fact", () => {
+    const found = ruleFindings("Культурна спадщина відіграє ключову роль у відновленні громад.");
+    expect(found.map((f) => f.category)).toContain("PADDING");
+  });
+
+  it("flags «має вирішальне значення»", () => {
+    const found = ruleFindings("Участь громади має вирішальне значення для проєкту.");
+    expect(found.map((f) => f.category)).toContain("PADDING");
+  });
+
+  it("flags an evaluative дієприслівниковий зворот at a sentence's end", () => {
+    const found = ruleFindings(
+      "Проєкт оцифрує архів, забезпечуючи доступ до нього для дослідників.",
+    );
+    const padding = found.find((f) => f.category === "PADDING");
+    expect(padding?.quote).toBe("забезпечуючи");
+  });
+
+  it("leaves an ordinary дієприслівник alone", () => {
+    // «записуючи» here is a plain action, not evaluative padding.
+    expect(
+      ruleFindings("Волонтери обійдуть село, записуючи спогади старожилів."),
+    ).toEqual([]);
+  });
+
+  it("does not flag a plain factual role", () => {
+    expect(
+      ruleFindings("Музей виконує роль архіву для трьох сільських громад."),
+    ).toEqual([]);
+  });
+});
+
 describe("ruleFindings — silence on clean text", () => {
   it("says nothing about a concrete paragraph", () => {
     const clean = [

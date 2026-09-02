@@ -843,6 +843,7 @@ enum FindingCategory {
   MARKETING
   OFF_TOPIC
   LONG_SENTENCE
+  PADDING
 }
 
 enum FindingSource {

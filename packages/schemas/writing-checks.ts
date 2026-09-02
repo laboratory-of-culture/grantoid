@@ -28,6 +28,14 @@ export const FindingCategory = z.enum([
   "OFF_TOPIC",
   /** Long enough that a reviewer loses the thread. */
   "LONG_SENTENCE",
+  /**
+   * Words arranged to sound like an argument that carry none — the Ukrainian
+   * shapes a language model falls into. A significance claim bolted onto a
+   * plain fact («відіграє ключову роль»), or an evaluative дієприслівниковий
+   * зворот tacked onto the end of a sentence («…, забезпечуючи сталий
+   * розвиток»). See the humanizer skill, patterns 1 and 3.
+   */
+  "PADDING",
 ]);
 export type FindingCategory = z.infer<typeof FindingCategory>;
 
@@ -37,6 +45,7 @@ export const CATEGORY_LABEL_UK: Record<FindingCategory, string> = {
   MARKETING: "Рекламна мова",
   OFF_TOPIC: "Не про це",
   LONG_SENTENCE: "Задовге речення",
+  PADDING: "Порожня риторика",
 };
 
 export type Finding = {
@@ -131,6 +140,45 @@ const VAGUE: { pattern: RegExp; whyUk: string; instead: string }[] = [
 ];
 
 /**
+ * Ukrainian shapes a language model uses to sound like it is making a point.
+ *
+ * Two, both taken from the humanizer skill and both narrowed hard to stay under
+ * the noise bar. The first is significance inflation: a sentence states a plain
+ * fact and then adds that the fact «відіграє ключову роль» or «має вирішальне
+ * значення», which commits to nothing and is what a reviewer has learned to
+ * skip. The second is the evaluative дієприслівниковий зворот bolted onto a
+ * sentence's end — «…, забезпечуючи сталий розвиток громади» — the Ukrainian of
+ * the English "-ing" tell; a real grant manager writes that as its own clause
+ * or not at all.
+ *
+ * Deliberately not here: «не лише…, але й…» (ordinary Ukrainian), «з метою»
+ * (bureaucratic but the register the call itself is written in), and bare
+ * «насправді» / «по суті» (one occurrence is not a tell).
+ */
+const PADDING: { pattern: RegExp; whyUk: string; instead: string }[] = [
+  {
+    pattern:
+      /(відігра\p{L}+|гра\p{L}+)\s+(важлив\p{L}*|ключов\p{L}*|вирішальн\p{L}*|провідн\p{L}*|центральн\p{L}*|визначальн\p{L}*)\s+роль/giu,
+    whyUk: "«Відіграє ключову роль» — це оцінка без змісту, яку донор пропускає очима.",
+    instead: "Напишіть, що конкретно ця річ робить у проєкті.",
+  },
+  {
+    pattern: /ма\p{L}+\s+(вирішальн\p{L}*|ключов\p{L}*|першочергов\p{L}*)\s+значенн\p{L}*/giu,
+    whyUk: "«Має вирішальне значення» нічого не стверджує — це підсилювач, а не факт.",
+    instead: "Скажіть, на що саме це впливає і як.",
+  },
+  {
+    // The зворот bolted onto the end: a comma, then an evaluative gerund. The
+    // list is curated to the ones a model reaches for; a plain дієприслівник
+    // like «читаючи» or «йдучи» is ordinary Ukrainian and not matched.
+    pattern:
+      /,\s*(підкреслюючи|наголошуючи|акцентуючи|забезпечуючи|гарантуючи|сприяючи|посилюючи|зміцнюючи|відображаючи|демонструючи|підтверджуючи|уособлюючи|символізуючи)\p{L}*/giu,
+    whyUk: "Дієприслівниковий зворот наприкінці речення тут не додає факту — це оформлення.",
+    instead: "Винесіть це в окреме речення з підметом, якщо думка справді потрібна, або приберіть.",
+  },
+];
+
+/**
  * Where a sentence stops being read.
  *
  * Forty words is generous — most style guides say twenty-five. Set high because
@@ -187,6 +235,19 @@ export function ruleFindings(text: string): Finding[] {
       push({
         quote: match[0],
         category: "VAGUE",
+        whyUk: rule.whyUk,
+        suggestionUk: rule.instead,
+        source: "RULE",
+      });
+    }
+  }
+
+  for (const rule of PADDING) {
+    for (const match of text.matchAll(rule.pattern)) {
+      push({
+        // Trim a leading comma+space so the highlight sits on the phrase.
+        quote: match[0].replace(/^,\s*/, ""),
+        category: "PADDING",
         whyUk: rule.whyUk,
         suggestionUk: rule.instead,
         source: "RULE",
