@@ -7,15 +7,20 @@
 #
 #   docker compose -f docker-compose.prod.yml -f docker-compose.mac.yml up -d db app
 #
-# `db app` наприкінці не декорація. Накладка не вміє видаляти сервіс, тож без
-# явного переліку піднявся б і `ollama` — контейнер, який слухає той самий порт
-# усередині мережі compose і рахує на CPU. Симптом був би не помилкою, а просто
-# повільною системою, і шукали б ви його довго.
+# The `ollama` service from the prod file is pushed into an unused profile here,
+# so `docker compose ... up -d` on macOS starts db and app and NOT ollama — a
+# container that would listen on the same compose-internal port and compute on
+# CPU inside the VM. The symptom is not an error, just a slow system, and it is
+# a long hunt. (An overlay cannot delete a service; a profile it never selects
+# is the next best thing.)
 #
-# Решта — db, том зі сховищем, порт лише на 127.0.0.1 — лишається з
-# docker-compose.prod.yml без змін.
+# The rest — db, the storage volume, the 127.0.0.1-only port — carries over from
+# docker-compose.prod.yml unchanged.
 
 services:
+  ollama:
+    profiles: ["gpu-host-only"]
+
   app:
     environment:
       # host.docker.internal — це адреса хоста з середини VM. Docker Desktop дає

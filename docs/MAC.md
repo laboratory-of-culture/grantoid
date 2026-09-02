@@ -74,15 +74,15 @@ Network → Firewall → Options → додайте `/opt/homebrew/bin/ollama`, 
 cp .env.example .env
 # заповніть POSTGRES_PASSWORD і APP_BASE_URL (https://grantoid.in.ua)
 
-docker compose -f docker-compose.prod.yml -f docker-compose.mac.yml up -d db app
+docker compose -f docker-compose.prod.yml -f docker-compose.mac.yml up -d
 docker compose -f docker-compose.prod.yml -f docker-compose.mac.yml exec app npx prisma migrate deploy
 docker compose -f docker-compose.prod.yml -f docker-compose.mac.yml exec app npx tsx scripts/setup-sources.ts
 ```
 
-**`db app` наприкінці обов'язкові.** Накладка не вміє видаляти сервіс, тож без
-переліку піднявся б і `ollama` — контейнер, який слухає той самий порт усередині
-мережі compose і рахує на CPU. Симптом був би не помилкою, а просто повільною
-системою.
+`up -d` піднімає лише `db` і `app`: накладка `docker-compose.mac.yml` ховає
+сервіс `ollama` у невибраний профіль, бо на macOS модель працює на хості
+(розділ 1), а контейнерна `ollama` слухала б той самий порт усередині мережі
+compose і рахувала б на CPU — симптом не помилка, а просто повільна система.
 
 ## 3. Машина не повинна засинати
 
