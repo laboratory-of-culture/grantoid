@@ -25,6 +25,7 @@ Nothing here is read by the application or copied into the Docker image.
 | `launchd/ua.grantoid.digest.plist` | `~/Library/LaunchAgents/` | `docs/MAC.md` §6 |
 | `launchd/ua.grantoid.backup.plist` | `~/Library/LaunchAgents/` | `docs/MAC.md` §7 |
 | `backup.sh` | run in place from the checkout by the backup job | `docs/MAC.md` §7 |
+| `update.sh` | run in place to pull main and roll the stack forward | `docs/MAC.md` §6 |
 
 Load an agent with `launchctl load ~/Library/LaunchAgents/<file>` — no sudo.
 The cloudflared daemon is the one root service: `sudo launchctl bootstrap

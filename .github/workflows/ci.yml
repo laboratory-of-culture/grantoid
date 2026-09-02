@@ -69,7 +69,7 @@ jobs:
       - name: Modernist tokens
         run: node scripts/audit-tokens.mjs
 
-  # Викладення на OVHcloud.
+  # Викладення по SSH (OVHcloud-шлях).
   #
   # `needs: check` is the whole point: the run that verified is the run that
   # deploys, so nothing reaches the server that has not passed the ladder, the
@@ -77,12 +77,19 @@ jobs:
   # required reviewer in the repository settings and this also becomes a
   # deliberate button rather than a consequence of merging.
   #
+  # Off unless the repository variable SSH_DEPLOY is "true". The beta runs on a
+  # Mac mini behind a Cloudflare tunnel with no inbound SSH, and updates there
+  # are `deploy/update.sh` run by hand (docs/MAC.md). Without the gate this job
+  # would fail every push to main on missing secrets.
+  #
   # Secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS.
   # See docs/OVHCLOUD.md for how each is produced.
   deploy:
     name: Викласти
     needs: check
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: >-
+      github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+      && vars.SSH_DEPLOY == 'true'
     runs-on: ubuntu-latest
     environment: production
     # Two deploys at once would race on the same working copy and the same
@@ -156,7 +163,9 @@ jobs:
   preflight:
     name: Передпольотна перевірка
     needs: deploy
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: >-
+      github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+      && vars.SSH_DEPLOY == 'true'
     runs-on: ubuntu-latest
     environment: production
 
