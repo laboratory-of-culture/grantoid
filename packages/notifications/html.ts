@@ -26,7 +26,6 @@
  */
 
 import type { Digest } from "./digest";
-import { formatDateUk } from "../schemas/locale-uk";
 
 /** From packages/ui/tokens.css. Literal here because email has no variables. */
 const INK = "#201e1d";
@@ -49,24 +48,38 @@ function esc(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function entryRow(entry: Digest["entries"][number]): string {
-  const deadline =
-    entry.deadlineIsKnown && entry.deadline
-      ? `подання до ${formatDateUk(entry.deadline)}`
-      : "термін не вказано в оголошенні";
+function entryRow(entry: Digest["entries"][number], index: number): string {
+  const ordinal = String(index + 1).padStart(2, "0");
+  const deadlineColor = entry.deadlineSoon ? ACCENT : MUTED;
+  const deadlineWeight = entry.deadlineSoon ? "700" : "400";
 
   return `
     <tr>
-      <td style="padding:20px 0;border-top:2px solid ${RULE};">
-        <a href="${esc(entry.url)}"
-           style="display:block;margin:0 0 6px;font-family:${SANS};font-size:17px;
-                  font-weight:700;line-height:1.3;color:${INK};text-decoration:none;">
-          ${esc(entry.titleUk)}
-        </a>
-        <div style="font-family:${MONO};font-size:12px;letter-spacing:0.08em;
-                    text-transform:uppercase;color:${MUTED};">
-          ${esc(entry.donorName)} &middot; ${esc(deadline)}
-        </div>
+      <td style="padding:18px 0;border-top:2px solid ${RULE};">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td valign="top" width="34"
+                style="font-family:${MONO};font-size:12px;line-height:1.4;color:${MUTED};
+                       padding-top:2px;">
+              ${ordinal}
+            </td>
+            <td valign="top">
+              <a href="${esc(entry.url)}"
+                 style="display:block;margin:0 0 6px;font-family:${SANS};font-size:16px;
+                        font-weight:700;line-height:1.35;color:${INK};text-decoration:none;">
+                ${esc(entry.titleUk)}
+              </a>
+              <div style="font-family:${MONO};font-size:11px;letter-spacing:0.08em;
+                          text-transform:uppercase;color:${MUTED};margin:0 0 3px;">
+                ${esc(entry.donorName)}
+              </div>
+              <div style="font-family:${SANS};font-size:13px;line-height:1.4;
+                          color:${deadlineColor};font-weight:${deadlineWeight};">
+                ${esc(entry.deadlineLine)}
+              </div>
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>`;
 }
@@ -80,7 +93,7 @@ function entryRow(entry: Digest["entries"][number]): string {
  * unsubscribe link that goes somewhere else.
  */
 export function renderDigestHtml(digest: Digest, organizationName: string): string {
-  const rows = digest.entries.map(entryRow).join("");
+  const rows = digest.entries.map((entry, i) => entryRow(entry, i)).join("");
   // The unsubscribe URL is the only absolute origin the digest carries, so the
   // feed link is derived from it rather than passed separately — one source
   // means the two cannot point at different installations.

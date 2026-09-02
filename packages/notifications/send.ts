@@ -168,6 +168,7 @@ export async function sendDueDigests(
         picked,
         origin,
         token,
+        now,
       );
 
       await transport.send({

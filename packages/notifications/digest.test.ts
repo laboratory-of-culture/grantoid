@@ -101,7 +101,13 @@ describe("buildDigest", () => {
     [entry()],
     "https://app.example.org",
     "tok123",
+    NOW,
   );
+
+  it("dates the deadline and counts the days left, the way the feed does", () => {
+    // entry() closes 2026-11-30; NOW is 2026-08-20 → 102 days.
+    expect(digest.text).toContain("подання до 30 листопада 2026 р. · 102 дн.");
+  });
 
   it("carries the public facts about the call", () => {
     expect(digest.text).toContain("Гранти на культурну спадщину");

@@ -54,6 +54,7 @@ async function main(): Promise<void> {
     picked,
     "http://localhost:3000",
     user!.unsubscribeToken ?? "<токен буде видано під час першої розсилки>",
+    now,
   );
 
   console.log(`Кому:  ${EMAIL}`);

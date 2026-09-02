@@ -25,6 +25,10 @@ export type DigestEntry = {
   donorName: string;
   deadline: Date | null;
   deadlineIsKnown: boolean;
+  /** Worded once here so the text and the HTML cannot disagree. */
+  deadlineLine: string;
+  /** Within seven days — the HTML letter flags it, the text cannot. */
+  deadlineSoon: boolean;
   url: string;
 };
 
@@ -78,19 +82,54 @@ export function opportunitiesUk(n: number): string {
   });
 }
 
+/**
+ * The deadline line, worded exactly as `/mozhlyvosti` words it.
+ *
+ * Date **and** days remaining — `ua-locale` says a deadline the reader cannot
+ * plan around is half a deadline — and "дн." rather than a plural, the same
+ * abbreviation the feed uses so the two screens read alike. `soon` is the
+ * seven-day mark the feed flags in red; the HTML letter uses it, the text
+ * cannot.
+ *
+ * One helper so the text and the HTML say the same thing: an unsubscribe link
+ * that disagrees between the two is the classic tell of a letter assembled
+ * twice, and a deadline that disagrees is worse.
+ */
+export function deadlineLineUk(
+  deadline: Date | null,
+  deadlineIsKnown: boolean,
+  now: Date = new Date(),
+): { label: string; soon: boolean } {
+  if (!deadlineIsKnown || !deadline) {
+    return { label: "термін не вказано в оголошенні", soon: false };
+  }
+  const days = Math.ceil((deadline.getTime() - now.getTime()) / 86_400_000);
+  const tail = days >= 0 ? ` · ${days} дн.` : "";
+  return {
+    label: `подання до ${formatDateUk(deadline)}${tail}`,
+    soon: days >= 0 && days <= 7,
+  };
+}
+
 export function buildDigest(
   organizationName: string,
   entries: readonly FeedEntry[],
   baseUrl: string,
   unsubscribeToken: string,
+  now: Date = new Date(),
 ): Digest {
-  const picked: DigestEntry[] = entries.map((e) => ({
-    titleUk: e.titleUk,
-    donorName: e.donorName,
-    deadline: e.deadline,
-    deadlineIsKnown: e.deadlineIsKnown,
-    url: `${baseUrl}/hranty/${e.grantId}`,
-  }));
+  const picked: DigestEntry[] = entries.map((e) => {
+    const dl = deadlineLineUk(e.deadline, e.deadlineIsKnown, now);
+    return {
+      titleUk: e.titleUk,
+      donorName: e.donorName,
+      deadline: e.deadline,
+      deadlineIsKnown: e.deadlineIsKnown,
+      deadlineLine: dl.label,
+      deadlineSoon: dl.soon,
+      url: `${baseUrl}/hranty/${e.grantId}`,
+    };
+  });
 
   // Built once and returned, because the header and the body have to point at
   // the same place — a client's native unsubscribe and the link in the text
@@ -102,11 +141,7 @@ export function buildDigest(
     "",
     ...picked.flatMap((e) => [
       `• ${e.titleUk}`,
-      `  ${e.donorName}${
-        e.deadlineIsKnown && e.deadline
-          ? ` · подання до ${formatDateUk(e.deadline)}`
-          : " · термін не вказано в оголошенні"
-      }`,
+      `  ${e.donorName} · ${e.deadlineLine}`,
       `  ${e.url}`,
       "",
     ]),
