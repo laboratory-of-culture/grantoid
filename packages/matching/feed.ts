@@ -118,12 +118,26 @@ export async function loadFeed(
   });
 
   const seen = new Set<string>();
+  // The same call is often posted on both ГУРТ and Простір, and ingestion keys
+  // uniqueness per source, so it becomes two Grant rows with two grantIds and
+  // two near-identical matches. In the feed that is the same opportunity twice,
+  // once with each source's verdict. Collapsed here on title + deadline day —
+  // the newest match wins because rows are ordered `computedAt desc`.
+  const sameCall = new Set<string>();
   const entries: FeedEntry[] = [];
   const byBucket = emptyBuckets();
 
   for (const row of rows) {
     if (seen.has(row.grantId)) continue;
     seen.add(row.grantId);
+
+    const title = (row.grant.titleUk ?? row.grant.title).toLowerCase().replace(/\s+/g, " ").trim();
+    const day = row.grant.deadlineIsKnown && row.grant.deadline
+      ? row.grant.deadline.toISOString().slice(0, 10)
+      : "";
+    const callKey = `${title}|${day}`;
+    if (title.length > 0 && sameCall.has(callKey)) continue;
+    sameCall.add(callKey);
 
     // After the dedup, never in the query. A grant keeps its older match rows
     // by design, so filtering on `recommend` before the dedup lets a superseded
