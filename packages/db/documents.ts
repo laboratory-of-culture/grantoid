@@ -24,6 +24,51 @@ export const ACCEPTED = new Map<string, string>([
   ["text/plain", "txt"],
 ]);
 
+const BY_EXTENSION = new Map<string, string>([
+  ["pdf", "application/pdf"],
+  ["docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+  ["doc", "application/msword"],
+  ["txt", "text/plain"],
+]);
+
+/**
+ * The real format of an upload, because the browser's guess is not enough.
+ *
+ * `File.type` is empty or `application/octet-stream` whenever the OS has no
+ * handler registered for the extension — routine for `.doc`, common for `.docx`
+ * on a machine without Office, and it happens to `.pdf` too. Trusting it alone
+ * rejects a valid statute with "формат не підтримується". So: the reported type
+ * wins only if we already accept it; otherwise the filename extension decides.
+ * The leading bytes are a last resort, used only when the filename has no
+ * extension at all — an extension we don't recognise (`.zip`, `.pages`) is a
+ * "no" even if its bytes happen to look like one of ours.
+ *
+ * Returns null when nothing identifies it as one of the four formats.
+ */
+export function resolveMimeType(
+  filename: string,
+  reported: string,
+  bytes: Uint8Array,
+): string | null {
+  if (ACCEPTED.has(reported)) return reported;
+
+  const ext = /\.([a-z0-9]+)$/i.exec(filename)?.[1]?.toLowerCase();
+  if (ext) return BY_EXTENSION.get(ext) ?? null;
+
+  return sniff(bytes);
+}
+
+/** Format from the leading bytes — only for a file with no extension at all. */
+function sniff(bytes: Uint8Array): string | null {
+  const at = (...sig: number[]) => sig.every((b, i) => bytes[i] === b);
+  if (at(0x25, 0x50, 0x44, 0x46)) return "application/pdf"; // %PDF
+  if (at(0x50, 0x4b, 0x03, 0x04) || at(0x50, 0x4b, 0x05, 0x06)) {
+    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"; // PK.. (zip → docx)
+  }
+  if (at(0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1)) return "application/msword"; // OLE2 (legacy .doc)
+  return null;
+}
+
 export class UploadRejected extends Error {}
 
 let defaultStore: DocumentStore | null = null;
@@ -68,7 +113,12 @@ export async function uploadDocument(
   if (input.bytes.byteLength > MAX_BYTES) {
     throw new UploadRejected("Файл більший за 20 МБ. Стисніть його або завантажте частинами.");
   }
-  if (!ACCEPTED.has(input.mimeType)) {
+
+  // Not input.mimeType directly: the browser reports "" for a .doc as often as
+  // not, and the extension is the more reliable signal. The resolved type is
+  // what gets stored, so text extraction downstream switches on something true.
+  const mimeType = resolveMimeType(input.filename, input.mimeType, input.bytes);
+  if (!mimeType) {
     throw new UploadRejected("Підтримуються PDF, DOCX, DOC і TXT. Виберіть файл цих форматів.");
   }
 
@@ -91,7 +141,7 @@ export async function uploadDocument(
     kind: input.kind,
     filename: input.filename,
     storageKey: stored.key,
-    mimeType: input.mimeType,
+    mimeType,
     sizeBytes: stored.sizeBytes,
     contentHash: hash,
     grantId: input.grantId ?? null,
