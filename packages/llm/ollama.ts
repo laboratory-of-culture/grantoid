@@ -99,9 +99,8 @@ export async function complete<S extends z.ZodTypeAny>(
   const think = opts.think ?? false;
   const started = Date.now();
 
-  let response;
-  try {
-    response = await client.chat({
+  const request = () =>
+    client.chat({
       model,
       messages: [
         { role: "system", content: system },
@@ -115,7 +114,28 @@ export async function complete<S extends z.ZodTypeAny>(
         seed,
       },
     });
-  } catch (err) {
+
+  // `TypeError: fetch failed` under load — Ollama serves one request at a time,
+  // and the nightly chain and the editor can arrive at once. The call is not
+  // cheap to lose: a dropped eligibility pair is a grant silently unassessed
+  // until someone notices the count. So a transient connection error is retried
+  // with a short backoff; a real error (bad request, model missing) is not,
+  // because retrying it just wastes the window.
+  let response;
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      response = await request();
+      lastErr = null;
+      break;
+    } catch (err) {
+      lastErr = err;
+      if (attempt === 3 || !isTransient(err)) break;
+      await sleep(attempt * 2000);
+    }
+  }
+
+  if (!response) {
     return {
       parsed: null,
       raw: "",
@@ -128,7 +148,7 @@ export async function complete<S extends z.ZodTypeAny>(
         outputTokens: 0,
         latencyMs: Date.now() - started,
       },
-      error: `ollama: ${String(err)}`,
+      error: `ollama: ${String(lastErr)}`,
     };
   }
 
@@ -173,4 +193,28 @@ function safeJson(text: string): unknown {
   } catch {
     return undefined;
   }
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * A connection-level failure worth retrying, not a rejected request.
+ *
+ * `fetch failed` and the socket errors under it (`ECONNRESET`, `ECONNREFUSED`,
+ * `UND_ERR_*`) mean the model was busy or restarting. A 4xx-shaped error from
+ * Ollama — a missing model, a malformed request — will fail again the same way.
+ */
+function isTransient(err: unknown): boolean {
+  const s = String(
+    err instanceof Error ? `${err.message} ${(err as { cause?: unknown }).cause ?? ""}` : err,
+  ).toLowerCase();
+  return (
+    s.includes("fetch failed") ||
+    s.includes("econnreset") ||
+    s.includes("econnrefused") ||
+    s.includes("und_err") ||
+    s.includes("socket") ||
+    s.includes("timeout") ||
+    s.includes("network")
+  );
 }
