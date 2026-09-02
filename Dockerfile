@@ -19,6 +19,9 @@ ENV NODE_ENV=production
 RUN apt-get update && apt-get install -y --no-install-recommends openssl \
     && rm -rf /var/lib/apt/lists/*
 
+# --omit=dev, so anything the running container needs is a real dependency —
+# `tsx` included, because the nightly pipeline, the digest and preflight all run
+# as `tsx scripts/*.ts` in here.
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 

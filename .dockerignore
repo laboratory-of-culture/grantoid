@@ -1,0 +1,33 @@
+# Build context: the app, its packages, prisma, and the assets `next build`
+# needs. Everything else is either rebuilt in the image, secret, or irrelevant.
+#
+# `evals/` stays IN — packages/db/seed.ts imports evals/load, and `next build`
+# typechecks it. `video/` is out, which also drops the Remotion dependency the
+# root typecheck would otherwise want.
+
+.git
+.gitignore
+node_modules
+**/node_modules
+.next
+out
+
+.env
+.env.*
+!.env.example
+
+.storage
+.mail
+*.log
+npm-debug.log*
+admin-credentials.txt
+test-credentials.txt
+.DS_Store
+
+video
+logos
+deploy
+public/_preview
+public/_audit.js
+.claude/hooks/.last-verified
+.codegraph

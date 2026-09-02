@@ -8,6 +8,10 @@
 #
 # TLS is not in this file. Put Caddy or nginx in front; see docs/DEPLOY.md.
 
+# Pinned so volume and network names do not depend on the checkout directory:
+# the backup script and every deploy doc refer to `grant-assistant_storage`.
+name: grant-assistant
+
 services:
   db:
     image: pgvector/pgvector:pg17
