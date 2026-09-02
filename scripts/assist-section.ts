@@ -10,11 +10,12 @@
 import { suggestSectionRevision } from "../packages/db/concepts";
 import { checkRuntime } from "../packages/llm/ollama";
 import { prisma } from "../packages/db/tenancy";
+import { DEV_ORG_EMAIL } from "./dev-account";
 
 async function main(): Promise<void> {
   await checkRuntime();
 
-  const email = process.env.SMOKE_EMAIL ?? "laboratoryofculture@gmail.com";
+  const email = process.env.SMOKE_EMAIL ?? DEV_ORG_EMAIL;
   const user = await prisma.user.findUniqueOrThrow({
     where: { email },
     include: { memberships: true },

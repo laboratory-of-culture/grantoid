@@ -15,9 +15,10 @@
 
 import { createSession, SESSION_COOKIE } from "../packages/auth/session";
 import { prisma } from "../packages/db/tenancy";
+import { DEV_ORG_EMAIL } from "./dev-account";
 
 const BASE = process.env.SMOKE_BASE_URL ?? "http://localhost:3000";
-const EMAIL = process.env.SMOKE_EMAIL ?? "laboratoryofculture@gmail.com";
+const EMAIL = process.env.SMOKE_EMAIL ?? DEV_ORG_EMAIL;
 
 type Route = {
   path: string;

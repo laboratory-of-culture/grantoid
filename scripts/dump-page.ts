@@ -9,6 +9,7 @@
 
 import { createSession, SESSION_COOKIE } from "../packages/auth/session";
 import { prisma } from "../packages/db/tenancy";
+import { DEV_ORG_EMAIL } from "./dev-account";
 
 const BASE = process.env.SMOKE_BASE_URL ?? "http://localhost:3000";
 
@@ -36,7 +37,7 @@ function toText(html: string): string {
 
 async function main(): Promise<void> {
   const path = process.argv[2] ?? "/profil";
-  const email = process.argv[3] ?? process.env.SMOKE_EMAIL ?? "laboratoryofculture@gmail.com";
+  const email = process.argv[3] ?? process.env.SMOKE_EMAIL ?? DEV_ORG_EMAIL;
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) throw new Error(`no such user: ${email}`);

@@ -66,3 +66,7 @@ public/_preview.pdf
 
 # What the Stop hook last saw green. Per-machine state, not a shared fact.
 .claude/hooks/.last-verified
+
+# Документи закупівлі: ставки, протокол вибору, табелі обліку часу.
+# Репозиторій публічний — це не те, що публікують.
+contractors/

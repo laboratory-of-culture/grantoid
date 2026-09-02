@@ -12,8 +12,9 @@ import { loadFeed } from "../packages/matching/feed";
 import { matchOrganization } from "../packages/matching/run";
 import { checkRuntime } from "../packages/llm/ollama";
 import { prisma } from "../packages/db/tenancy";
+import { DEV_ORG_EMAIL } from "./dev-account";
 
-const EMAIL = process.argv[2] ?? "laboratoryofculture@gmail.com";
+const EMAIL = process.argv[2] ?? DEV_ORG_EMAIL;
 
 async function main(): Promise<void> {
   await checkRuntime();

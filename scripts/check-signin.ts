@@ -11,11 +11,12 @@
 import { SignInFailed, signIn } from "../packages/auth/accounts";
 import { SESSION_COOKIE, cookieOptions, createSession, resolveSession } from "../packages/auth/session";
 import { prisma } from "../packages/db/tenancy";
+import { DEV_ORG_EMAIL } from "./dev-account";
 
 const BASE = process.env.SMOKE_BASE_URL ?? "http://localhost:3000";
 
 async function main(): Promise<void> {
-  const email = process.argv[2] ?? "laboratoryofculture@gmail.com";
+  const email = process.argv[2] ?? DEV_ORG_EMAIL;
   const password = process.argv[3] ?? "laboratoriya-2026";
 
   console.log(`email     ${email}`);

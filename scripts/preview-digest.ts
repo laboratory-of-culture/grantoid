@@ -15,8 +15,9 @@
 import { buildDigest, selectForDigest } from "../packages/notifications/digest";
 import { prisma } from "../packages/db/tenancy";
 import { loadFeed } from "../packages/matching/feed";
+import { DEV_ORG_EMAIL } from "./dev-account";
 
-const EMAIL = process.argv[2] ?? "laboratoryofculture@gmail.com";
+const EMAIL = process.argv[2] ?? DEV_ORG_EMAIL;
 
 async function main(): Promise<void> {
   const user = await prisma.user.findUnique({

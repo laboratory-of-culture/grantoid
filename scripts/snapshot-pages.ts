@@ -19,11 +19,12 @@ import path from "node:path";
 
 import { createSession, SESSION_COOKIE } from "../packages/auth/session";
 import { prisma } from "../packages/db/tenancy";
+import { DEV_ORG_EMAIL } from "./dev-account";
 
 const BASE = process.env.SMOKE_BASE_URL ?? "http://localhost:3000";
 const OUT = path.join(process.cwd(), "public", "_preview");
 
-const NGO = "laboratoryofculture@gmail.com";
+const NGO = DEV_ORG_EMAIL;
 
 const PAGES: { file: string; path: string; email: string | null }[] = [
   { file: "profil.html", path: "/profil", email: NGO },

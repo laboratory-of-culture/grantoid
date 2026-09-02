@@ -10,6 +10,7 @@
 
 import { createSession, SESSION_COOKIE } from "../packages/auth/session";
 import { prisma } from "../packages/db/tenancy";
+import { DEV_ORG_EMAIL } from "./dev-account";
 
 const BASE = process.env.SMOKE_BASE_URL ?? "http://localhost:3000";
 
@@ -70,7 +71,7 @@ async function validToken(): Promise<string> {
 }
 
 async function main(): Promise<void> {
-  const ngo = await tokenFor("laboratoryofculture@gmail.com");
+  const ngo = await tokenFor(DEV_ORG_EMAIL);
   const admin = await tokenFor("admin@grant-assistant.local");
 
   const grant = await prisma.match.findFirst({

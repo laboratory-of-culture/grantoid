@@ -30,7 +30,7 @@ afterEach(() => {
 });
 
 const base = {
-  to: "laboratoryofculture@gmail.com",
+  to: "demo@example.org",
   subject: "1 нова можливість",
   text: "текстова версія листа",
   unsubscribeUrl: "http://localhost:3000/vidpyska?t=demo",
@@ -50,7 +50,7 @@ describe("FileTransport", () => {
 
     const txt = readdirSync(dir).find((f) => f.endsWith(".txt"))!;
     const body = readFileSync(path.join(dir, txt), "utf8");
-    expect(body).toContain("To: laboratoryofculture@gmail.com");
+    expect(body).toContain("To: demo@example.org");
     // The header a client turns into its own unsubscribe button. Its absence is
     // the difference between someone leaving the list and someone pressing spam.
     expect(body).toContain("List-Unsubscribe: <http://localhost:3000/vidpyska?t=demo>");

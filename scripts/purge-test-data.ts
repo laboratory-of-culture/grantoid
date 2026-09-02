@@ -30,6 +30,7 @@ import path from "node:path";
 
 import { prisma } from "../packages/db/tenancy";
 import { documentStore } from "../packages/db/documents";
+import { DEV_ORG_EMAIL } from "./dev-account";
 
 const APPLY = process.argv.includes("--delete");
 
@@ -52,14 +53,20 @@ const RESERVED_DOMAINS = [
 ];
 
 /**
- * Seed accounts on a domain that looks real.
+ * The account `seed:demo` creates.
  *
- * `seed:demo` uses a working address so the sign-in screen looks like the real
- * thing during a demo, which is exactly why it has to be named here: the
- * reserved-domain rule cannot see it, and its password is written to a file in
- * the repository root.
+ * Its default is on a reserved domain, so the rule above already finds it and
+ * this list is redundant in the normal case. It is not redundant when somebody
+ * points DEV_ORG_EMAIL at a working address to make a demo look real — then
+ * this is the only thing that recognises the account, and its password is
+ * sitting in test-credentials.txt.
+ *
+ * The reason it reads an environment variable rather than naming an address:
+ * the operator's own NGO is also a beta user, and while the demo account
+ * shared its address, `--delete` on a live server would have taken the real
+ * organization's profile and documents with it.
  */
-const SEEDED_EMAILS = ["laboratoryofculture@gmail.com"];
+const SEEDED_EMAILS = [DEV_ORG_EMAIL];
 
 /**
  * Fixture organization names, read from the eval files rather than listed here.

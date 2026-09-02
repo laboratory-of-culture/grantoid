@@ -11,11 +11,12 @@
 import { generateDraft, loadConcept } from "../packages/db/concepts";
 import { checkRuntime } from "../packages/llm/ollama";
 import { prisma } from "../packages/db/tenancy";
+import { DEV_ORG_EMAIL } from "./dev-account";
 
 async function main(): Promise<void> {
   await checkRuntime();
 
-  const email = process.argv[3] ?? "laboratoryofculture@gmail.com";
+  const email = process.argv[3] ?? DEV_ORG_EMAIL;
   const user = await prisma.user.findUnique({
     where: { email },
     include: { memberships: true },

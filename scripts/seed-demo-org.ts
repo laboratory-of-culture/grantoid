@@ -21,9 +21,10 @@ import { FACT_KEYS } from "../packages/schemas/fact-registry";
 import { LocalDocumentStore, contentHash } from "../packages/storage";
 import { prisma } from "../packages/db/tenancy";
 import { recomputeCompleteness } from "../packages/db/confirmation";
+import { DEV_ORG_EMAIL } from "./dev-account";
 
 const CREDENTIALS_FILE = path.join(process.cwd(), "test-credentials.txt");
-const EMAIL = "laboratoryofculture@gmail.com";
+const EMAIL = DEV_ORG_EMAIL;
 const PASSWORD = "laboratoriya-2026";
 const ORG_NAME = "ГО «Лабораторія культурних досліджень»";
 
