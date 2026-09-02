@@ -28,9 +28,9 @@ Ollama рахував би на CPU: приблизно вп'ятеро пові
 ## 2. Встановлення
 
 ```bash
-# Homebrew, Docker, Ollama
+# Homebrew, контейнерний рушій, Ollama, cloudflared
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-brew install --cask docker ollama
+brew install --cask orbstack ollama-app
 brew install cloudflared
 
 # Модель
@@ -38,31 +38,41 @@ ollama pull qwen3:4b
 ollama run qwen3:4b --verbose   # подивіться eval rate; орієнтир — 40-70 ток/с
 ```
 
-`--verbose` тут не для краси. Усі числа в `docs/DEPLOY.md` виміряні на RTX 3050 з
+Рушій — **OrbStack**, а не Docker Desktop: легший, швидше стартує після
+перезавантаження, менше пам'яті. Дає ті самі `docker` і `docker compose`
+(у `/usr/local/bin/docker`). `docker-compose.mac.yml` уже має `extra_hosts` для
+`host-gateway`, тож `host.docker.internal` працює і тут. Docker Desktop теж
+підійшов би без змін.
+
+`--verbose` не для краси. Усі числа в `docs/DEPLOY.md` виміряні на RTX 3050 з
 61,6 ток/с. Якщо ваш результат у тому ж діапазоні — таблиця пропускної здатності
-переноситься без перерахунку. Якщо вдвічі менший — нічне вікно вдвічі довше, і
-краще знати це до запуску.
+переноситься без перерахунку. Заміряно на цьому M2: **52 ток/с**, той самий
+діапазон.
 
-### Ollama має слухати не тільки loopback
+### Ollama слухає мережу і стартує сама
 
-За замовчуванням вона прив'язується до `127.0.0.1`, а контейнер із застосунком
-живе в іншій мережі й туди не дістанеться.
+Контейнер із застосунком дістає хост за адресою мосту, не за `127.0.0.1`, тож
+Ollama має слухати `0.0.0.0`. І вона має підніматися без меню-бару — сервером
+керує LaunchAgent, а не застосунок:
 
 ```bash
-launchctl setenv OLLAMA_HOST "0.0.0.0"
-# перезапустіть Ollama, щоб змінна підхопилась
+cp deploy/launchd/ua.grantoid.ollama.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/ua.grantoid.ollama.plist
 ```
 
-**Ціна цього**: Ollama не має автентифікації взагалі, і тепер вона відповідає
-всім у локальній мережі. Закрийте 11434 у брандмауері macOS (System Settings →
-Network → Firewall → Options → додайте `ollama` і заборонте вхідні), або
-переконайтесь, що мережа, в якій стоїть машина, вам справді підконтрольна.
+Плейлист задає `OLLAMA_HOST=0.0.0.0` і `KeepAlive`. Меню-барний застосунок Ollama
+тоді **не** тримайте в елементах входу — двоє на одному порту не вживуться.
+
+**Ціна `0.0.0.0`**: Ollama не має автентифікації взагалі й тепер відповідає всім
+у локальній мережі. Закрийте 11434 у брандмауері macOS (System Settings →
+Network → Firewall → Options → додайте `/opt/homebrew/bin/ollama`, заборонте
+вхідні), або переконайтесь, що мережа, в якій стоїть машина, вам підконтрольна.
 
 ### Запуск
 
 ```bash
 cp .env.example .env
-# заповніть POSTGRES_PASSWORD і APP_BASE_URL
+# заповніть POSTGRES_PASSWORD і APP_BASE_URL (https://grantoid.in.ua)
 
 docker compose -f docker-compose.prod.yml -f docker-compose.mac.yml up -d db app
 docker compose -f docker-compose.prod.yml -f docker-compose.mac.yml exec app npx prisma migrate deploy
@@ -95,10 +105,13 @@ Update → Automatic Updates → усе, що встановлює й перез
 За два-три місяці бети блекаут станеться майже напевно, і це означає лежачий
 сервіс до вашого приходу.
 
-**Рекомендація: на цій машині FileVault вимкнути**, увімкнути автоматичний вхід
-(System Settings → Users & Groups → Automatically log in as), а Docker Desktop
-поставити в елементи входу. Тоді після відновлення живлення все піднімається
-саме, а `restart: unless-stopped` у compose доробить решту.
+**Рекомендація: на цій машині FileVault вимкнути** (`sudo fdesetup disable`),
+увімкнути автоматичний вхід (System Settings → Users & Groups → Automatically log
+in as), а OrbStack поставити в елементи входу (Settings → Start at login). Тоді
+після відновлення живлення сесія користувача піднімається сама, за нею OrbStack,
+за ним `restart: unless-stopped` у compose і LaunchAgent'и розкладу. Саме тому
+розклад — це LaunchAgent'и, а не root-демони: сокет OrbStack живе в сесії
+користувача, і автологін — те, що робить її завжди присутньою.
 
 Ціна цього — незашифрований диск на машині, де лежать статути організацій. Тому:
 
@@ -114,25 +127,46 @@ fdesetup status    # перевірте, що стан саме той, який
 
 ## 5. Домен
 
-Спершу з'ясуйте, чи маєте справжню публічну адресу: порівняйте WAN-IP у роутері з
-`curl ifconfig.me`. Різні — у вас CGNAT, і проброс портів неможливий.
+`grantoid.in.ua` віддається через Cloudflare Tunnel. Застосунок слухає лише
+`127.0.0.1:3000`, `cloudflared` тримає вихідне з'єднання до Cloudflare, і проброс
+портів на роутері не потрібен зовсім. Це саме й закриває питання CGNAT: тунель
+іде назовні, вхідних з'єднань немає, а звіряти WAN-IP роутера з `curl ifconfig.me`
+більше ні до чого.
 
-### Cloudflare Tunnel
+### Спершу: зона має обслуговуватися Cloudflare
+
+Зараз `grantoid.in.ua` стоїть на DNS реєстратора (`imena.ua`). `cloudflared tunnel
+route dns` і проксі працюють лише коли NS домену вказують на Cloudflare.
+
+1. Cloudflare → Add a site → `grantoid.in.ua`, план Free.
+2. У панелі реєстратора — розділ **DNS-серверів**, не редактор записів — заміни
+   NS на пару, яку видав Cloudflare.
+3. Дочекайся статусу Active (кілька хвилин — доба).
+
+Пошта на домені не використовується, тож зі старої зони переносити нема чого:
+Cloudflare підхопить лише ті записи, які створить тунель. Стара парковка на
+`194.28.173.2` (записи `@`, `www`, `mail`, `ftp`) при цьому відмирає — це
+навмисно.
+
+### Тунель
 
 ```bash
 cloudflared tunnel login
-cloudflared tunnel create hrantoid
-cloudflared tunnel route dns hrantoid grants.example.org
+cloudflared tunnel create grantoid
+cloudflared tunnel route dns grantoid grantoid.in.ua
 ```
 
-`~/.cloudflared/config.yml`:
+Останній рядок створює в зоні проксований CNAME `grantoid.in.ua` →
+`<UUID>.cfargotunnel.com`.
+
+`~/.cloudflared/config.yml` — шаблон у `deploy/cloudflared/config.yml`:
 
 ```yaml
-tunnel: hrantoid
+tunnel: grantoid
 credentials-file: /Users/<ви>/.cloudflared/<UUID>.json
 
 ingress:
-  - hostname: grants.example.org
+  - hostname: grantoid.in.ua
     service: http://127.0.0.1:3000
   - service: http_status:404
 ```
@@ -141,62 +175,57 @@ ingress:
 sudo cloudflared service install    # стартує сам після перезавантаження
 ```
 
-Порти відкривати не треба взагалі: тунель іде назовні. Сертифікат теж не ваш
-клопіт.
+Порти відкривати не треба взагалі. Сертифікат теж не ваш клопіт.
 
-**Що варто розуміти**: TLS термінується в Cloudflare, тобто вони бачать трафік у
-відкритому вигляді, включно із завантаженими статутами. D1 це формально не
-порушує — обіцянка стосується того, що документи не йдуть до чужого AI-сервісу.
-Але продукт, чия центральна обіцянка — приватність документів, мав би сказати про
-це в `/pryvatnist`, а не змовчати.
+### www → без www
 
-Якщо публічна адреса все-таки є — проброс 80/443 і Caddy з `docs/OVHCLOUD.md`
-розділ 6, і між вами та користувачем немає нікого.
+Тунель не редіректить, а застосунок не дивиться на `Host`. Тому `www` зводиться
+на голий домен на боці Cloudflare:
+
+- DNS: CNAME `www` → `grantoid.in.ua`, proxied;
+- Rules → Redirect Rules: `Host` дорівнює `www.grantoid.in.ua` → 301 на
+  `https://grantoid.in.ua` + concat(URI path).
+
+### Що варто розуміти
+
+TLS термінується в Cloudflare: вони бачать трафік у відкритому вигляді, включно
+із завантаженими статутами. D1 це формально не порушує — обіцянка стосується
+того, що документи не йдуть до чужого AI-сервісу. Але продукт, чия центральна
+обіцянка — приватність документів, каже про це в `/pryvatnist` окремим абзацом, а
+не мовчить. Правити той абзац, якщо схема доставки зміниться.
+
+Якщо колись з'явиться справжня публічна адреса — проброс 80/443 і Caddy з
+`docs/OVHCLOUD.md` розділ 6, і між вами та користувачем немає нікого.
 
 ### APP_BASE_URL
 
 ```
-APP_BASE_URL=https://grants.example.org
+APP_BASE_URL=https://grantoid.in.ua
 ```
 
 З цього будується кожне посилання в щотижневому листі, зокрема відписка.
 
 ## 6. Розклад
 
-macOS має cron, але рідний спосіб — launchd. Створіть
-`/Library/LaunchDaemons/org.hrantoid.nightly.plist`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key><string>org.hrantoid.nightly</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/bin/sh</string>
-    <string>-c</string>
-    <string>cd /opt/grant-assistant &amp;&amp; /usr/local/bin/docker compose -f docker-compose.prod.yml -f docker-compose.mac.yml exec -T app npm run nightly</string>
-  </array>
-  <key>StartCalendarInterval</key>
-  <dict><key>Hour</key><integer>4</integer><key>Minute</key><integer>0</integer></dict>
-  <key>StandardOutPath</key><string>/var/log/hrantoid-nightly.log</string>
-  <key>StandardErrorPath</key><string>/var/log/hrantoid-nightly.log</string>
-</dict>
-</plist>
-```
+macOS має cron, але рідний спосіб — launchd. Готові плейлисти — у
+`deploy/launchd/`, це **LaunchAgent'и**: вони живуть у `~/Library/LaunchAgents/`
+і виконуються в сесії користувача, де є сокет OrbStack (розділ 4). Root-демон до
+того сокета не дістався б.
 
 ```bash
-sudo launchctl load /Library/LaunchDaemons/org.hrantoid.nightly.plist
+cp deploy/launchd/ua.grantoid.nightly.plist ~/Library/LaunchAgents/
+cp deploy/launchd/ua.grantoid.digest.plist  ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/ua.grantoid.nightly.plist
+launchctl load ~/Library/LaunchAgents/ua.grantoid.digest.plist
 ```
 
-Другий такий самий для розсилки — `npm run digest`, понеділок о десятій
-(`<key>Weekday</key><integer>1</integer>`).
+`nightly` — конвеєр о 04:00, `digest` — розсилка в понеділок о 10:00. Шляхи в
+плейлистах абсолютні до `~/grantoid` і `/usr/local/bin/docker`; правити обидва,
+якщо щось переїде. Логи — у `~/Library/Logs/grantoid-*.log`.
 
-Один рядок `npm run nightly`, а не чотири окремі етапи. Причина в
-`docs/DEPLOY.md` розділ 5: порядок етапів обов'язковий, і рознесення їх по
-годинах означає вгадувати, скільки триватиме витягування.
+Один рядок `npm run nightly`, а не чотири окремі етапи: порядок етапів
+обов'язковий, і рознесення їх по годинах означає вгадувати, скільки триватиме
+витягування (`docs/DEPLOY.md` розділ 5).
 
 ## 7. Резервні копії
 
@@ -211,8 +240,10 @@ docker run --rm -v grant-assistant_storage:/data -v /Volumes/backup:/backup \
   alpine tar czf /backup/storage-$(date +%F).tar.gz -C /data .
 ```
 
-Обидві разом, третім launchd-завданням. База без файлів — це посилання на
-документи, які не завантажуються; файли без бази — набір файлів без доступу.
+Обидві разом, третім LaunchAgent'ом — `deploy/launchd/ua.grantoid.backup.plist`
+викликає `deploy/backup.sh` о 05:30, після нічного конвеєра. База без файлів — це
+посилання на документи, які не завантажуються; файли без бази — набір файлів без
+доступу.
 
 Якщо FileVault ви вимкнули (розділ 4), **зашифруйте самі копії** перед тим, як
 вони поїдуть кудись за межі приміщення: `age`, `gpg`, або зашифрований том на
@@ -233,7 +264,8 @@ Postgres, і хоч WAL таке переживає, повторювати це
 ## 9. Перевірка, що воно справді працює
 
 ```bash
-npm run preflight        # має бути зелений на сервері, на відміну від машини розробки
+docker compose -f docker-compose.prod.yml -f docker-compose.mac.yml \
+  run --rm app npx tsx scripts/preflight.ts   # зелений на сервері, на відміну від машини розробки
 ```
 
 І окремо — те, чого жоден скрипт не перевірить:
@@ -241,7 +273,7 @@ npm run preflight        # має бути зелений на сервері, �
 - [ ] `sudo reboot`, і за п'ять хвилин сайт відповідає **без вашої участі**
 - [ ] витягнути шнур із розетки, вставити назад — те саме
 - [ ] `ollama run qwen3:4b --verbose` під навантаженням не скидає швидкість утричі
-- [ ] нічний прогін відпрацював повний цикл, у `/var/log/hrantoid-nightly.log` немає помилок
+- [ ] нічний прогін відпрацював повний цикл, у `~/Library/Logs/grantoid-nightly.log` немає помилок
 - [ ] резервна копія **відновлена** на порожню базу хоча б раз
 - [ ] 11434 недоступний з іншої машини в мережі
 

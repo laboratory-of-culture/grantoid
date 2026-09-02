@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The nightly pipeline: discovery, classification, extraction, matching. 04:00.
+
+  A LaunchAgent, not a Daemon: OrbStack's docker socket lives in the user
+  session, and automatic login (docs/MAC.md §4) keeps that session up across
+  reboots. Install without sudo:
+
+    cp deploy/launchd/ua.grantoid.nightly.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/ua.grantoid.nightly.plist
+
+  One `npm run nightly`, not four cron lines: the steps must run in order and
+  splitting them by the clock means guessing how long extraction takes. See
+  docs/DEPLOY.md §5 and docs/MAC.md §6.
+
+  Paths are for this machine (checkout at ~/grantoid, docker at
+  /usr/local/bin/docker via OrbStack). Adjust both if either moves.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>ua.grantoid.nightly</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>-c</string>
+    <string>cd /Users/andriituzhykov/grantoid &amp;&amp; /usr/local/bin/docker compose -f docker-compose.prod.yml -f docker-compose.mac.yml exec -T app npm run nightly</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>4</integer>
+    <key>Minute</key><integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key><string>/Users/andriituzhykov/Library/Logs/grantoid-nightly.log</string>
+  <key>StandardErrorPath</key><string>/Users/andriituzhykov/Library/Logs/grantoid-nightly.log</string>
+</dict>
+</plist>

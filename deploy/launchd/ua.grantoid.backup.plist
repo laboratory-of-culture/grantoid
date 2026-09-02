@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Database + storage volume, one job. Daily 05:30 — after the nightly pipeline
+  at 04:00 so the copy includes the night's work. LaunchAgent.
+
+    cp deploy/launchd/ua.grantoid.backup.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/ua.grantoid.backup.plist
+
+  Set the argument to the mounted external volume. If it is missing when the
+  job runs, backup.sh exits non-zero and the failure lands in the log rather
+  than being written to the internal disk — which would not be a backup.
+  docs/MAC.md §7.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>ua.grantoid.backup</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>-c</string>
+    <string>cd /Users/andriituzhykov/grantoid &amp;&amp; ./deploy/backup.sh /Volumes/backup</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>5</integer>
+    <key>Minute</key><integer>30</integer>
+  </dict>
+  <key>StandardOutPath</key><string>/Users/andriituzhykov/Library/Logs/grantoid-backup.log</string>
+  <key>StandardErrorPath</key><string>/Users/andriituzhykov/Library/Logs/grantoid-backup.log</string>
+</dict>
+</plist>

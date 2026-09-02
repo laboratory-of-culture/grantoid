@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Native `ollama serve`, run as the logged-in user (LaunchAgent, not Daemon).
+
+  Model inference needs Metal, which a container on macOS cannot reach — so
+  Ollama runs on the host and the app container dials it over the VM boundary
+  (docker-compose.mac.yml). See docs/MAC.md §1-2.
+
+  OLLAMA_HOST=0.0.0.0 because the container reaches the host by its bridge-gateway
+  address, not loopback. The cost: Ollama has no auth and now answers everyone on
+  the LAN — block 11434 in the macOS firewall or keep the machine on a network
+  you control. docs/MAC.md §2.
+
+  Install (no sudo — it is a per-user agent):
+    cp deploy/launchd/ua.grantoid.ollama.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/ua.grantoid.ollama.plist
+
+  This replaces the Ollama menu-bar app as the server. Leave that app out of
+  Login Items so the two do not fight over the port.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>ua.grantoid.ollama</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/ollama</string>
+    <string>serve</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>OLLAMA_HOST</key><string>0.0.0.0</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/Users/andriituzhykov/Library/Logs/grantoid-ollama.log</string>
+  <key>StandardErrorPath</key><string>/Users/andriituzhykov/Library/Logs/grantoid-ollama.log</string>
+</dict>
+</plist>

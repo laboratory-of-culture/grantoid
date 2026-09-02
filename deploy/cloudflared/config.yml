@@ -1,0 +1,29 @@
+# Cloudflare Tunnel config for grantoid.in.ua.
+#
+# Copy to ~/.cloudflared/config.yml on the Mac mini and fill in <ви> and <UUID>.
+# The UUID and the credentials JSON are produced by:
+#
+#   cloudflared tunnel login
+#   cloudflared tunnel create grantoid          # prints the UUID, writes the .json
+#   cloudflared tunnel route dns grantoid grantoid.in.ua
+#
+# Then install it as a service so it comes back after a reboot:
+#
+#   sudo cloudflared service install
+#
+# No ports are opened on the router: the tunnel dials out. See docs/MAC.md §5.
+
+tunnel: grantoid
+credentials-file: /Users/<ви>/.cloudflared/<UUID>.json
+
+ingress:
+  # The app listens on loopback only (docker-compose.prod.yml). cloudflared is
+  # the only thing that reaches it.
+  - hostname: grantoid.in.ua
+    service: http://127.0.0.1:3000
+
+  # www is redirected to the apex by a Cloudflare Redirect Rule, not here — the
+  # tunnel cannot redirect and the app does not look at Host. docs/MAC.md §5.
+
+  # Anything else that resolves to this tunnel gets a 404 rather than the app.
+  - service: http_status:404
