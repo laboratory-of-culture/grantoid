@@ -1,24 +1,29 @@
 # Cloudflare Tunnel config for grantoid.in.ua.
 #
-# Copy to ~/.cloudflared/config.yml on the Mac mini and fill in <ви> and <UUID>.
-# The UUID and the credentials JSON are produced by:
+# Goes to /etc/cloudflared/config.yml (root-owned). File mode, not token mode:
+# with --token, cloudflared ignores local ingress and reads it from the
+# dashboard instead — this file is the source of truth, so keep it local.
 #
+# Set up:
 #   cloudflared tunnel login
 #   cloudflared tunnel create grantoid          # prints the UUID, writes the .json
 #   cloudflared tunnel route dns grantoid grantoid.in.ua
-#
-# Then install it as a service so it comes back after a reboot:
-#
-#   sudo cloudflared service install
+#   sudo mkdir -p /etc/cloudflared
+#   sudo cp ~/.cloudflared/<UUID>.json /etc/cloudflared/
+#   sudo cp deploy/cloudflared/config.yml /etc/cloudflared/config.yml   # fix <UUID> below
+#   sudo cp deploy/cloudflared/com.cloudflare.cloudflared.plist /Library/LaunchDaemons/
+#   sudo launchctl bootstrap system /Library/LaunchDaemons/com.cloudflare.cloudflared.plist
 #
 # No ports are opened on the router: the tunnel dials out. See docs/MAC.md §5.
 
 tunnel: grantoid
-credentials-file: /Users/<ви>/.cloudflared/<UUID>.json
+credentials-file: /etc/cloudflared/<UUID>.json
+no-autoupdate: true
 
 ingress:
   # The app listens on loopback only (docker-compose.prod.yml). cloudflared is
-  # the only thing that reaches it.
+  # the only thing that reaches it. OrbStack publishes 127.0.0.1:3000 on the
+  # host regardless of which user is logged in.
   - hostname: grantoid.in.ua
     service: http://127.0.0.1:3000
 

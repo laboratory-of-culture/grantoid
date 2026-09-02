@@ -18,7 +18,8 @@ Nothing here is read by the application or copied into the Docker image.
 
 | File | Goes to | Set up by |
 |---|---|---|
-| `cloudflared/config.yml` | `~/.cloudflared/config.yml` | `docs/MAC.md` §5 |
+| `cloudflared/config.yml` | `/etc/cloudflared/config.yml` | `docs/MAC.md` §5 |
+| `cloudflared/com.cloudflare.cloudflared.plist` | `/Library/LaunchDaemons/` | `docs/MAC.md` §5 |
 | `launchd/ua.grantoid.ollama.plist` | `~/Library/LaunchAgents/` | `docs/MAC.md` §2 |
 | `launchd/ua.grantoid.nightly.plist` | `~/Library/LaunchAgents/` | `docs/MAC.md` §6 |
 | `launchd/ua.grantoid.digest.plist` | `~/Library/LaunchAgents/` | `docs/MAC.md` §6 |
@@ -26,6 +27,8 @@ Nothing here is read by the application or copied into the Docker image.
 | `backup.sh` | run in place from the checkout by the backup job | `docs/MAC.md` §7 |
 
 Load an agent with `launchctl load ~/Library/LaunchAgents/<file>` — no sudo.
+The cloudflared daemon is the one root service: `sudo launchctl bootstrap
+system /Library/LaunchDaemons/com.cloudflare.cloudflared.plist`.
 
 `APP_BASE_URL`, `POSTGRES_PASSWORD` and the rest live in `.env` on the machine —
 see `.env.example`. They are not in this directory because `.env` is gitignored

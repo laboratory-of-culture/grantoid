@@ -159,21 +159,27 @@ cloudflared tunnel route dns grantoid grantoid.in.ua
 Останній рядок створює в зоні проксований CNAME `grantoid.in.ua` →
 `<UUID>.cfargotunnel.com`.
 
-`~/.cloudflared/config.yml` — шаблон у `deploy/cloudflared/config.yml`:
+`cloudflared tunnel login` кладе `~/.cloudflared/cert.pem`, `create` — файл
+облікових даних `~/.cloudflared/<UUID>.json`.
 
-```yaml
-tunnel: grantoid
-credentials-file: /Users/<ви>/.cloudflared/<UUID>.json
-
-ingress:
-  - hostname: grantoid.in.ua
-    service: http://127.0.0.1:3000
-  - service: http_status:404
-```
+Служба працює **у файловому режимі**, як root-демон. Не `cloudflared service
+install` без аргументів (створює plist без `tunnel run`) і не токен-режим
+(`service install <token>` ігнорує локальний `config.yml` — ingress тоді лише в
+дашборді). Конфіг і облікові дані кладуться в `/etc/cloudflared/`, а plist
+запускає `cloudflared --config /etc/cloudflared/config.yml tunnel run`:
 
 ```bash
-sudo cloudflared service install    # стартує сам після перезавантаження
+sudo mkdir -p /etc/cloudflared
+sudo cp ~/.cloudflared/<UUID>.json /etc/cloudflared/
+sudo cp deploy/cloudflared/config.yml /etc/cloudflared/config.yml      # правит UUID усередині
+sudo cp deploy/cloudflared/com.cloudflare.cloudflared.plist /Library/LaunchDaemons/
+sudo launchctl bootstrap system /Library/LaunchDaemons/com.cloudflare.cloudflared.plist
 ```
+
+`cloudflared tunnel info grantoid` має показати активні з'єднання. Root-демон, а
+не LaunchAgent: тунель — мережева інфраструктура, йому не потрібна сесія
+користувача, лише `127.0.0.1:3000`, який OrbStack публікує на loopback хоста
+незалежно від входу.
 
 Порти відкривати не треба взагалі. Сертифікат теж не ваш клопіт.
 
