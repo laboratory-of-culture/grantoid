@@ -49,7 +49,15 @@ async function extractPdf(bytes: Uint8Array): Promise<ExtractedText> {
   // lines after the read that caused it and with nothing in the message to
   // connect them. Defended here rather than at each call site: the surprise
   // belongs to this function, so the copy does too.
-  const pdf = await getDocumentProxy(new Uint8Array(bytes));
+  //
+  // `verbosity: 0` (errors only): a Chrome-printed PDF makes pdf.js log a
+  // font-substitution warning per subset font and a `Math.sumPrecise` fallback
+  // notice, none of which affect the text it returns — but every upload would
+  // print a wall of them. `useSystemFonts: false` because nothing here renders.
+  const pdf = await getDocumentProxy(new Uint8Array(bytes), {
+    verbosity: 0,
+    useSystemFonts: false,
+  });
   const { text, totalPages } = await pdfText(pdf, { mergePages: true });
   return finish(text, totalPages);
 }
