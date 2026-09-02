@@ -81,6 +81,20 @@ describe("filterToVerbatim", () => {
     expect(kept).toHaveLength(1);
     expect(discarded).toHaveLength(1);
   });
+
+  it("discards a non-answer value even when its quotation is real", () => {
+    // On a terse document qwen3:4b emits `annual_budget_uah = «не вказано»` and
+    // cites the nearest sentence — here the registration line. The quote is in
+    // the document, so the verbatim check passes it; the value is not an answer.
+    for (const v of ["не вказано", "Не зазначено.", "немає інформації", "N/A", "—"]) {
+      const { kept, discarded } = filterToVerbatim(
+        [fact({ key: "annual_budget_uah", valueText: v, quote: "Організація зареєстрована в місті Житомир, Житомирська область." })],
+        STATUT,
+      );
+      expect(kept, v).toHaveLength(0);
+      expect(discarded[0]?.reason, v).toMatch(/non-answer/);
+    }
+  });
 });
 
 describe("Extraction schema", () => {

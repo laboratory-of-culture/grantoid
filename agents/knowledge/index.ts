@@ -144,7 +144,41 @@ export async function extract(
 }
 
 /**
- * Keep only facts whose quotation is actually in the document.
+ * A value that says "the document does not answer this".
+ *
+ * The prompt tells the model to return nothing for a fact the document does not
+ * settle, and on a statute qwen3:4b mostly does. On the terse registration
+ * extract it does not: asked for a budget the document has no line for, it
+ * emits `annual_budget_uah = «не вказано»` and cites the nearest sentence it can
+ * find — the address. The quotation is real, so `quoteAppearsIn` passes it, and
+ * the reviewer's queue fills with non-answers each carrying an unrelated quote.
+ * An unanswered fact is already a stored UNKNOWN (D4); a candidate for it is
+ * noise at best and a mismatched citation at worst.
+ */
+const NON_ANSWER = new Set([
+  "не вказано",
+  "не зазначено",
+  "не визначено",
+  "не встановлено",
+  "невідомо",
+  "немає інформації",
+  "немає даних",
+  "відсутня інформація",
+  "відсутні дані",
+  "інформація відсутня",
+  "н/д",
+  "n/a",
+  "-",
+  "—",
+]);
+
+function isNonAnswer(valueText: string): boolean {
+  return NON_ANSWER.has(valueText.trim().toLowerCase().replace(/[.\s]+$/, ""));
+}
+
+/**
+ * Keep only facts whose quotation is actually in the document and whose value
+ * is an actual answer.
  *
  * The check the whole agent turns on, and pure so it can be tested without a
  * model. A fluent, plausible sentence the document never contained is exactly
@@ -160,7 +194,13 @@ export function filterToVerbatim(
   const discarded: Discarded[] = [];
 
   for (const fact of facts) {
-    if (quoteAppearsIn(fact.quote, text)) {
+    if (isNonAnswer(fact.valueText)) {
+      discarded.push({
+        key: fact.key,
+        quote: fact.quote,
+        reason: "value is a non-answer — the document does not settle this fact",
+      });
+    } else if (quoteAppearsIn(fact.quote, text)) {
       kept.push(fact);
     } else {
       discarded.push({
