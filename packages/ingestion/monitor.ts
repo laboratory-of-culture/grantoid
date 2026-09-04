@@ -159,7 +159,23 @@ export async function monitorSource(sourceId: string): Promise<MonitorResult> {
   };
 }
 
-/** Check every source whose cadence has elapsed. */
+/**
+ * How much early a crawl still counts as due.
+ *
+ * The nightly chain fires at a fixed wall-clock time (04:00). A strict
+ * "elapsed >= cadence" gate then degrades to every *other* night: the moment one
+ * run lands a few seconds late — or an off-schedule crawl (a manual test, a
+ * catch-up after downtime) re-anchors `lastCrawledAt` to some daytime hour — the
+ * next 04:00 is a little under 24h later and the source is skipped until the run
+ * after that. A 24h source would then refresh once every 48h, which is exactly
+ * the "sources haven't updated in two days" symptom.
+ *
+ * Three hours of slack lets a daily job clear a 24h cadence every night while
+ * keeping the real interval well above the politeness floor (worst case ~21h).
+ */
+const CADENCE_GRACE_MS = 3 * 3_600_000;
+
+/** Check every source whose cadence has elapsed (within the grace window). */
 export async function monitorDue(): Promise<MonitorResult[]> {
   const sources = await prisma.source.findMany({ where: { enabled: true } });
   const now = Date.now();
@@ -167,7 +183,7 @@ export async function monitorDue(): Promise<MonitorResult[]> {
   const due = sources.filter(
     (s) =>
       s.lastCrawledAt === null ||
-      now - s.lastCrawledAt.getTime() >= s.crawlCadenceHours * 3_600_000,
+      now - s.lastCrawledAt.getTime() >= s.crawlCadenceHours * 3_600_000 - CADENCE_GRACE_MS,
   );
 
   const results: MonitorResult[] = [];
