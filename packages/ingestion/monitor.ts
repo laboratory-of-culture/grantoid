@@ -172,8 +172,20 @@ export async function monitorSource(sourceId: string): Promise<MonitorResult> {
  *
  * Three hours of slack lets a daily job clear a 24h cadence every night while
  * keeping the real interval well above the politeness floor (worst case ~21h).
+ *
+ * Capped at an eighth of the cadence, because `crawlCadenceHours` is per-source
+ * and an operator may set a short one. A flat three hours against a 3h cadence
+ * is a threshold of zero and against a 2h cadence it is negative — the source
+ * would come up due on every single pass, which is the politeness budget turned
+ * off rather than widened. The cap keeps the slack proportional: 3h on a daily
+ * source, 15 minutes on a two-hourly one.
  */
 const CADENCE_GRACE_MS = 3 * 3_600_000;
+
+export function dueAfterMs(crawlCadenceHours: number): number {
+  const cadence = crawlCadenceHours * 3_600_000;
+  return cadence - Math.min(CADENCE_GRACE_MS, cadence / 8);
+}
 
 /** Check every source whose cadence has elapsed (within the grace window). */
 export async function monitorDue(): Promise<MonitorResult[]> {
@@ -183,7 +195,7 @@ export async function monitorDue(): Promise<MonitorResult[]> {
   const due = sources.filter(
     (s) =>
       s.lastCrawledAt === null ||
-      now - s.lastCrawledAt.getTime() >= s.crawlCadenceHours * 3_600_000 - CADENCE_GRACE_MS,
+      now - s.lastCrawledAt.getTime() >= dueAfterMs(s.crawlCadenceHours),
   );
 
   const results: MonitorResult[] = [];

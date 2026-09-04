@@ -2,6 +2,9 @@
  * The three forms, and the 11–14 trap that catches every hand-rolled version.
  */
 
+import { execFileSync } from "node:child_process";
+import { resolve } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { NOUN_UK, countUk, formatIsoDateUk, normalizeDateUk, pluralUk } from "./locale-uk";
@@ -75,5 +78,27 @@ describe("formatIsoDateUk", () => {
 
   it("leaves a non-ISO value alone rather than blanking it", () => {
     expect(formatIsoDateUk("15 березня 2019")).toBe("15 березня 2019");
+  });
+
+  // A calendar date must not shift with the reader's clock. Parsed as UTC
+  // midnight it does — and that is not theoretical here: the app container runs
+  // in UTC while the confirm queue is a client component, so a browser west of
+  // Greenwich would hydrate the previous day over the server's own markup.
+  //
+  // Run in a child process because a zone has to be chosen before Intl caches
+  // one, which a test inside this process is already too late to do.
+  it("names the same day in a timezone west of Greenwich", () => {
+    const here = resolve(__dirname, "locale-uk.ts");
+    const out = execFileSync(
+      process.execPath,
+      [
+        "--experimental-strip-types",
+        "--no-warnings",
+        "-e",
+        `import("${here}").then((m) => console.log(m.formatIsoDateUk("2019-03-15")));`,
+      ],
+      { env: { ...process.env, TZ: "America/New_York" }, encoding: "utf8" },
+    );
+    expect(out.trim()).toBe("15 березня 2019 р.");
   });
 });

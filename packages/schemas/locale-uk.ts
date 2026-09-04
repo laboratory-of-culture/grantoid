@@ -92,8 +92,8 @@ export function normalizeDateUk(raw: string | null | undefined): string | null {
 
   const iso = /(\d{4})-(\d{2})-(\d{2})/.exec(text);
   if (iso) {
-    const d = new Date(`${iso[1]}-${iso[2]}-${iso[3]}T00:00:00Z`);
-    return Number.isNaN(d.getTime()) ? null : `${iso[1]}-${iso[2]}-${iso[3]}`;
+    const [, y, m, d] = iso as unknown as [string, string, string, string];
+    return isoIfReal(y, m, d);
   }
 
   const numeric = /(\d{1,2})[./](\d{1,2})[./](\d{4})/.exec(text);
@@ -116,8 +116,10 @@ function isoIfReal(year: string, month: string, day: string): string | null {
   const d = day.padStart(2, "0");
   const iso = `${year}-${m}-${d}`;
   const parsed = new Date(`${iso}T00:00:00Z`);
-  // Rejects 2019-02-30 and friends: Date rolls them over, so a mismatch on any
-  // component means the calendar date does not exist.
+  // Rejects 2019-02-30 and 2019-13-01. Reading the components back rather than
+  // trusting `Invalid Date` alone, because the two ways in here disagree: the
+  // ISO form makes V8 reject an impossible day outright, while a day assembled
+  // from «31 лютого 2019» could otherwise roll over into March.
   if (
     Number.isNaN(parsed.getTime()) ||
     parsed.getUTCFullYear() !== Number(year) ||
@@ -132,13 +134,22 @@ function isoIfReal(year: string, month: string, day: string): string | null {
 /**
  * A stored `YYYY-MM-DD` fact value, shown the way the rest of the UI shows dates.
  *
+ * Built as a *local* calendar date, never `…T00:00:00Z`. A registration date is
+ * a day on a calendar, not an instant: parsed as UTC midnight and then formatted
+ * in the reader's zone, it moves back a day for anyone west of Greenwich. That
+ * is not hypothetical here — the app container runs in UTC and the confirm queue
+ * is a client component, so the server would render «15 березня» into the HTML
+ * and the browser would hydrate «14 березня» over it. Constructing the date in
+ * local time makes every zone agree, which is what a calendar date has to do.
+ *
  * Falls back to the raw string if it is somehow not ISO — a value that predates
  * normalisation should still be legible, not blanked.
  */
 export function formatIsoDateUk(value: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
-  if (!m) return value;
-  return formatDateUk(new Date(`${m[1]}-${m[2]}-${m[3]}T00:00:00Z`));
+  const trimmed = value.trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (!m) return trimmed;
+  return formatDateUk(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
 }
 
 /** The nouns this product counts. Named once so two screens cannot disagree. */

@@ -101,21 +101,18 @@ export async function acceptCandidate(
     throw new ConfirmationFailed(`Поле «${candidate.key}» більше не існує в реєстрі.`);
   }
 
-  let value = (correctedValue ?? candidate.valueText).trim();
+  const proposed = candidate.valueText.trim();
+  let value = (correctedValue ?? proposed).trim();
   if (value.length === 0) {
     throw new ConfirmationFailed("Значення не може бути порожнім.");
   }
-
-  // Whether the reviewer changed the value, decided before normalisation folds a
-  // date into ISO. Coercing «15 березня 2019 року» to `2019-03-15` is not the
-  // reviewer correcting a fact and must not be logged as `fact.corrected`.
-  const reviewerEdited = value !== candidate.valueText.trim();
 
   // A statute writes «зареєстровано 15 березня 2019 року», and the knowledge
   // agent lifts that verbatim. Stored as-is it renders as a blank date picker
   // the next time the field is edited, because the control only reads ISO. The
   // eligibility agent is happier with an unambiguous `2019-03-15` too.
-  if (factDefinition(candidate.key)?.kind === "DATE") {
+  const isDate = factDefinition(candidate.key)?.kind === "DATE";
+  if (isDate) {
     const iso = normalizeDateUk(value);
     if (iso === null) {
       throw new ConfirmationFailed(
@@ -124,6 +121,17 @@ export async function acceptCandidate(
     }
     value = iso;
   }
+
+  // Did the reviewer actually change the fact — compared like for like.
+  //
+  // The naive comparison is against the raw candidate text, and for a date that
+  // is always true: the queue seeds its picker with the *normalised* value, so
+  // opening «6 квітня 2021 року», touching nothing and pressing save submits
+  // `2021-04-06` and logs a correction that never happened. This file records
+  // corrections precisely because how often people correct the agent is the
+  // signal for whether to keep it, and a signal every confirmed date inflates is
+  // worse than none. So a date is compared normalised-to-normalised.
+  const reviewerEdited = isDate ? value !== normalizeDateUk(proposed) : value !== proposed;
 
   const existing = await db.organizationFact.findFirst({
     where: { key: candidate.key },
@@ -179,8 +187,11 @@ export async function acceptCandidate(
         status: "ACCEPTED",
         resolvedAt: now,
         resolvedBy: userId,
-        acceptedValue: value === candidate.valueText ? null : value,
-        // ^ still records the stored form when it differs, normalisation included
+        // What was actually written, whenever that is not the string proposed —
+        // a reviewer's correction, or a date folded into ISO. Unlike the audit
+        // action above, this is a provenance record rather than a signal about
+        // the agent, so a normalisation belongs in it.
+        acceptedValue: value === proposed ? null : value,
       },
     });
 
