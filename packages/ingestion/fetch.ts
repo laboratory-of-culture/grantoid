@@ -10,10 +10,16 @@
 export const DEFAULT_USER_AGENT =
   "GrantAssistantBot/0.1 (+https://grant-assistant.org.ua/bot; bot@grant-assistant.org.ua)";
 
+import { assertFetchableUrl, UnsafeTarget } from "./ssrf";
+
 export class FetchRefused extends Error {}
 
 /** Per-host timestamps of the last request, for the rate limiter. */
 const lastRequestAt = new Map<string, number>();
+
+/** Redirect hops to follow before giving up — enough for the usual www/HTTPS
+ *  bounce, few enough that a redirect loop cannot spin. */
+const MAX_REDIRECTS = 5;
 
 export type FetchOptions = {
   userAgent?: string;
@@ -32,41 +38,61 @@ export async function politeFetch(
   url: string,
   opts: FetchOptions = {},
 ): Promise<{ status: number; body: string; contentType: string | null }> {
-  const target = new URL(url);
   const rate = Math.max(1, opts.rateLimitPerMin ?? 10);
   const minGapMs = 60_000 / rate;
-
-  const previous = lastRequestAt.get(target.host);
-  if (previous !== undefined) {
-    const wait = previous + minGapMs - Date.now();
-    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-  }
-  lastRequestAt.set(target.host, Date.now());
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 20_000);
 
+  // Redirects are followed by hand — `redirect: "follow"` would let a public
+  // host bounce us to an internal one without the SSRF guard ever seeing the
+  // second URL. Each hop is rate-limited by its own host and re-validated.
+  let current = url;
   try {
-    const response = await fetch(url, {
-      headers: {
-        // Identifying the crawler and giving a contact address is what lets a
-        // site owner complain instead of silently blocking. prostir.ua returns
-        // 403 to an unidentified client, which is how this was discovered.
-        "User-Agent": opts.userAgent ?? DEFAULT_USER_AGENT,
-        Accept: "application/rss+xml, application/xml, text/xml, text/html;q=0.9",
-        "Accept-Language": "uk,en;q=0.8",
-      },
-      redirect: "follow",
-      signal: controller.signal,
-    });
+    for (let hop = 0; ; hop++) {
+      await assertFetchableUrl(current);
 
-    const body = await response.text();
-    return {
-      status: response.status,
-      body,
-      contentType: response.headers.get("content-type"),
-    };
+      const host = new URL(current).host;
+      const previous = lastRequestAt.get(host);
+      if (previous !== undefined) {
+        const wait = previous + minGapMs - Date.now();
+        if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+      }
+      lastRequestAt.set(host, Date.now());
+
+      const response = await fetch(current, {
+        headers: {
+          // Identifying the crawler and giving a contact address is what lets a
+          // site owner complain instead of silently blocking. prostir.ua returns
+          // 403 to an unidentified client, which is how this was discovered.
+          "User-Agent": opts.userAgent ?? DEFAULT_USER_AGENT,
+          Accept: "application/rss+xml, application/xml, text/xml, text/html;q=0.9",
+          "Accept-Language": "uk,en;q=0.8",
+        },
+        redirect: "manual",
+        signal: controller.signal,
+      });
+
+      const location = response.headers.get("location");
+      if (response.status >= 300 && response.status < 400 && location) {
+        if (hop >= MAX_REDIRECTS) {
+          throw new FetchRefused(`${url}: забагато перенаправлень`);
+        }
+        // Resolve a relative Location against the URL that issued it, then loop
+        // back to the top where the new target is validated before we touch it.
+        current = new URL(location, current).toString();
+        continue;
+      }
+
+      const body = await response.text();
+      return {
+        status: response.status,
+        body,
+        contentType: response.headers.get("content-type"),
+      };
+    }
   } catch (err) {
+    if (err instanceof UnsafeTarget) throw new FetchRefused(err.message);
     if (err instanceof Error && err.name === "AbortError") {
       throw new FetchRefused(`${url} did not respond within the timeout`);
     }
