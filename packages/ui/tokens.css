@@ -193,6 +193,12 @@
 
   --duration-fast: 90ms;
   --duration-base: 160ms;
+  /* Long enough to be seen rather than glimpsed. The other two are for a state
+     changing under your hand, where anything slower feels like lag; this one is
+     for a cue that has to catch an eye which is not looking at it yet — the
+     writing review's flags, arriving after a wait long enough to have looked
+     away. Nothing that responds to input may use it. */
+  --duration-slow: 900ms;
   --ease: cubic-bezier(0.2, 0, 0, 1);
 }
 
@@ -200,5 +206,6 @@
   :root {
     --duration-fast: 0ms;
     --duration-base: 0ms;
+    --duration-slow: 0ms;
   }
 }

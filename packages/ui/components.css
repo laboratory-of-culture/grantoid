@@ -813,7 +813,11 @@ body {
   margin: 0;
   padding: 0 0 var(--space-1);
   border: 0;
-  border-bottom: var(--rule-weight) solid var(--color-neutral-500);
+  /* The category's colour, named once as a property so the underline, the
+     hover state and the arrival cue all thicken in the same ink instead of
+     three rules drifting apart. */
+  --flag-rule: var(--color-neutral-500);
+  border-bottom: var(--rule-weight) solid var(--flag-rule);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -821,15 +825,76 @@ body {
   cursor: pointer;
 }
 
-.flag-active { background: var(--color-neutral-200); }
+/* A flagged span has to answer the pointer.
+ *
+ * It was a button with `cursor: pointer` and nothing else: hovering it changed
+ * nothing, so the only signal it was live was the underline — and an underline
+ * is a proofreader's mark. It says «looked at», not «press me». People read the
+ * review count, saw some underlined words, and never found the suggestion
+ * sitting one click underneath.
+ *
+ * Two steps, not one shade: hover is the lighter wash and the open state keeps
+ * the darker one, so pointing at a flag and opening it stay distinguishable. */
+.flag:hover { background: var(--color-neutral-100); }
+.flag:focus-visible { background: var(--color-neutral-100); }
+.flag-active,
+.flag-active:hover { background: var(--color-neutral-200); }
+
+/* The moment the findings land, each flag shows its own open state once and
+ * releases it.
+ *
+ * A count in the bar — «3 зауваження» — never said *where*, and after a review
+ * that takes about a hundred seconds the eye has long left the text. The wash
+ * is the same grey a flag takes when it is open, which makes the cue an honest
+ * one: it demonstrates what pressing does rather than merely being motion.
+ *
+ * Staggered so it sweeps down the document instead of flashing everywhere at
+ * once, which reads as a rendering glitch. The index is capped by the caller,
+ * so a document with forty findings still finishes its cue in about a second
+ * rather than animating for most of a minute.
+ *
+ * Only on a review that ran in this page. On reload the flags are simply there,
+ * and re-running the cue every visit would be nagging — the sentence under the
+ * bar carries the instruction from then on. */
+/* The underline swells and settles, twice.
+ *
+ * Two earlier attempts washed the background instead — first one slow fade,
+ * then two pulses of it — and both were invisible standing next to the page.
+ * Neutral on white gives a few per cent of luminance to work with, which marks
+ * a span you are already looking at and cannot fetch an eye that is not; and
+ * the rule at the top of this section is that a flag is underlined rather than
+ * filled, because a fill fights the paragraph for attention. So the cue belongs
+ * on the underline, which is the part that already carries the meaning.
+ *
+ * An inset shadow rather than a thicker border: growing the border reflows
+ * every line under it, and a paragraph that jumps while you read is worse than
+ * no cue at all. The shadow paints under the text, in the category's own ink,
+ * so what swells is the mark the reader will go on to recognise. */
+@keyframes flag-arrive {
+  0%, 100% { box-shadow: inset 0 0 0 0 transparent; }
+  15%, 55% { box-shadow: inset 0 -0.35em 0 0 var(--flag-rule); }
+  35%, 75% { box-shadow: inset 0 0 0 0 transparent; }
+}
+
+.flag-fresh {
+  animation: flag-arrive var(--duration-slow) var(--ease) backwards;
+  animation-delay: calc(var(--flag-index, 0) * 70ms);
+}
+
+/* The tokens zero the durations under reduced motion but an animation with a
+ * delay still runs; this stops it outright. The hover and open states carry the
+ * affordance on their own, so nothing is lost by never playing it. */
+@media (prefers-reduced-motion: reduce) {
+  .flag-fresh { animation: none; }
+}
 
 /* Only the unsupported claim gets the accent. It is the one that reaches a
  * funder as a statement of fact by the organization; the rest are prose. */
-.flag-unsupported { border-bottom-color: var(--color-accent-500); }
-.flag-off_topic { border-bottom-color: var(--color-neutral-700); }
+.flag-unsupported { --flag-rule: var(--color-accent-500); }
+.flag-off_topic { --flag-rule: var(--color-neutral-700); }
 .flag-marketing,
 .flag-vague,
-.flag-long_sentence { border-bottom-color: var(--color-neutral-500); }
+.flag-long_sentence { --flag-rule: var(--color-neutral-500); }
 
 /* The same distinction inside the popover, so a finding and its highlight are
  * visibly the same object. */

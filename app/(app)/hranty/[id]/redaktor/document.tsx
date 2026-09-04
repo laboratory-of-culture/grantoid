@@ -178,18 +178,44 @@ export function ConceptDocument({
         </p>
       ) : null}
 
+      {/* The instruction, whenever there is anything underlined.
+          The count in the bar says how many; it never said where, or that the
+          marks are the control. Kept out of the `justReviewed` branch on
+          purpose: findings survive a reload, and someone returning to the page
+          tomorrow needs telling just as much as someone who watched the cue
+          play. */}
+      {total > 0 ? (
+        <p className="field-hint">
+          Підкреслене — це те, що варто переглянути. Натисніть будь-яке, щоб побачити, у
+          чому річ і чим замінити.
+        </p>
+      ) : null}
+
       <article className="doc">
-        {concept.sections.map((section) => (
-          <DocumentSection
-            key={section.key}
-            grantId={grantId}
-            section={section}
-            findings={visible(section.key)}
-            openId={open}
-            onOpen={setOpen}
-            onDismissed={() => setOpen(null)}
-          />
-        ))}
+        {(() => {
+          // A running count across the whole document, so the arrival cue
+          // sweeps down the page in order instead of restarting at every
+          // heading. Capped by the flag itself — see `flagIndex`.
+          let seen = 0;
+          return concept.sections.map((section) => {
+            const sectionFindings = visible(section.key);
+            const startIndex = seen;
+            seen += sectionFindings.length;
+            return (
+              <DocumentSection
+                key={section.key}
+                grantId={grantId}
+                section={section}
+                findings={sectionFindings}
+                startIndex={startIndex}
+                fresh={justReviewed}
+                openId={open}
+                onOpen={setOpen}
+                onDismissed={() => setOpen(null)}
+              />
+            );
+          });
+        })()}
       </article>
     </div>
   );
@@ -206,6 +232,8 @@ function DocumentSection({
   grantId,
   section,
   findings,
+  startIndex,
+  fresh,
   openId,
   onOpen,
   onDismissed,
@@ -213,6 +241,10 @@ function DocumentSection({
   grantId: string;
   section: ConceptView["sections"][number];
   findings: Finding[];
+  /** Where this section's flags fall in the document-wide arrival sequence. */
+  startIndex: number;
+  /** Whether these findings arrived from a review that ran in this page. */
+  fresh: boolean;
   openId: string | null;
   onOpen: (id: string | null) => void;
   onDismissed: () => void;
@@ -324,6 +356,8 @@ function DocumentSection({
           sectionKey={section.key}
           content={section.content}
           spans={spans}
+          startIndex={startIndex}
+          fresh={fresh}
           openId={openId}
           onOpen={onOpen}
           onDismissed={onDismissed}
@@ -350,6 +384,8 @@ function MarkedText({
   sectionKey,
   content,
   spans,
+  startIndex,
+  fresh,
   openId,
   onOpen,
   onDismissed,
@@ -358,6 +394,8 @@ function MarkedText({
   sectionKey: string;
   content: string;
   spans: ReturnType<typeof spansFor>;
+  startIndex: number;
+  fresh: boolean;
   openId: string | null;
   onOpen: (id: string | null) => void;
   onDismissed: () => void;
@@ -376,8 +414,16 @@ function MarkedText({
           type="button"
           className={`flag flag-${span.finding.category.toLowerCase()}${
             isOpen ? " flag-active" : ""
-          }`}
+          }${fresh ? " flag-fresh" : ""}`}
+          // The cue sweeps in document order, but a long document must not
+          // spend a minute animating: past the cap every remaining flag shares
+          // the last step, so the whole sequence is over inside a second.
+          style={fresh ? ({ "--flag-index": flagIndex(startIndex + i) } as React.CSSProperties) : undefined}
           aria-expanded={isOpen}
+          // The button's own text is the flagged words, which tells a screen
+          // reader nothing about what pressing it does. `aria-expanded` alone
+          // says «expandable», not «expandable into what».
+          aria-label={`${content.slice(span.start, span.end)} — ${CATEGORY_LABEL_UK[span.finding.category]}, показати зауваження`}
           onClick={() => onOpen(isOpen ? null : id)}
         >
           {content.slice(span.start, span.end)}
@@ -399,6 +445,20 @@ function MarkedText({
   if (cursor < content.length) parts.push(content.slice(cursor));
 
   return <p className="doc-text">{parts}</p>;
+}
+
+/**
+ * Where a flag falls in the arrival sweep, capped.
+ *
+ * Uncapped, a document with forty findings would still be animating three
+ * seconds after the last one — long past the point where a cue reads as a cue
+ * rather than as the page misbehaving. Everything past the twelfth arrives
+ * together on the last step.
+ */
+const ARRIVAL_STEPS = 12;
+
+function flagIndex(position: number): number {
+  return Math.min(position, ARRIVAL_STEPS);
 }
 
 /**
