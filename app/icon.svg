@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="грантоЇД">
+  <title>грантоЇД</title>
+  <!--
+    The mark reduced to one letter: Ї.
+
+    A wordmark is mush at 16px, so the favicon has to be a glyph, and the
+    wordmark's own reasoning picks which one — app/components/wordmark.tsx says
+    the capital Ї is "doing the other half of the work", being one of the four
+    letters Ukrainian has and Russian does not. A tab strip full of round blue
+    letters is also where an unusual shape earns its keep.
+
+    Drawn as rectangles rather than set in Inter: nothing guarantees a typeface
+    where a favicon is rasterised, and a glyph that falls back to a system face
+    is a different mark. Squares are the design system's own rule anyway — zero
+    radius everywhere (packages/ui/README.md) — and they survive the downscale
+    to 16px better than circles, which turn to grey mush.
+
+    Full-bleed accent rather than a glyph floating on the ground: a tab sits on
+    browser chrome that is light in one theme and dark in the other, and only a
+    filled field reads the same against both.
+
+    The proportions are the whole difficulty. A first pass used a short wide
+    stem with dots as wide as it, and at any size above a tab it stopped being a
+    letter and became a face — two eyes and a nose. A capital Ї is a *tall*
+    stem, roughly three times its own width, with the dots narrower than it and
+    tucked close in. Hence 10 wide by 31 tall, dots 9 square spread only 26
+    across, all symmetric about x=32 and optically centred with equal 9 margins
+    top and bottom.
+
+    Authored at 64 rather than 32 so the gap under the dots can be tuned in
+    whole units: 6 here is 1.5px once a browser paints it at 16, the least that
+    still reads as dots over a stem instead of one smudge.
+  -->
+  <rect width="64" height="64" fill="#ec3013"/>
+  <g fill="#f3f2f2">
+    <rect x="19" y="9" width="9" height="9"/>
+    <rect x="36" y="9" width="9" height="9"/>
+    <rect x="27" y="24" width="10" height="31"/>
+  </g>
+</svg>
