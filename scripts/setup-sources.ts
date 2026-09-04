@@ -21,7 +21,7 @@ const CREDENTIALS_FILE = path.join(process.cwd(), "admin-credentials.txt");
 const ADMIN_EMAIL = "admin@grant-assistant.local";
 
 /**
- * Both sources were checked by hand before being written here.
+ * Every source was checked by hand before being written here.
  *
  * Громадський Простір runs WordPress and exposes its opportunities as a custom
  * post type, so the feed is the post-type feed rather than the site feed — the
@@ -31,6 +31,12 @@ const ADMIN_EMAIL = "admin@grant-assistant.local";
  * sitemaps.xml its robots.txt names is gone, and the "rss" icon on the site
  * links to a WhatsApp channel. Its listing page is parsed instead, which its
  * robots.txt permits.
+ *
+ * Grant.Market has a sitemap but it is an archive of all 1402 opportunities
+ * ever posted rather than a list of open ones, so the homepage listing is
+ * parsed instead — it carries the calls still accepting applications. Its
+ * robots.txt also publishes a Content-Signal, which is the first source here to
+ * state its position on machine reading explicitly; see the note below.
  */
 const SOURCES = [
   {
@@ -59,6 +65,26 @@ const SOURCES = [
       "оголошень. Зберігаємо лише заголовок і посилання, повний текст не републікуємо.",
     crawlCadenceHours: 24,
     rateLimitPerMin: 4,
+  },
+  {
+    name: "Grant.Market",
+    homepageUrl: "https://grant.market",
+    kind: "AGGREGATOR" as const,
+    discovery: "HTML_LIST" as const,
+    // The homepage, not /opp — that path is in the sitemap but 301s back to the
+    // root, and the root is where the currently-open calls are listed. The
+    // sitemap holds all 1402 opportunities ever published, which is an archive
+    // rather than a list of what an organization can still apply to.
+    discoveryUrl: "https://grant.market/",
+    contactEmail: "info@grant.market",
+    tosNote:
+      "robots.txt дозволяє обхід повністю (Allow: / для всіх) і оголошує Content-Signal: " +
+      "search=yes, ai-input=yes, ai-train=no. Ми читаємо оголошення для відповіді користувачеві " +
+      "(ai-input) і не навчаємо на них моделей (ai-train) — обидві умови дотримано. Окремої " +
+      "сторінки умов використання немає. Зберігаємо лише заголовок, посилання та дату, повний " +
+      "текст не републікуємо.",
+    crawlCadenceHours: 24,
+    rateLimitPerMin: 6,
   },
 ];
 

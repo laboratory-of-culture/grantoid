@@ -102,6 +102,61 @@ describe("parseHtmlList", () => {
   });
 });
 
+/**
+ * grant.market wraps the whole card in the anchor, so the link text arrives as
+ * the headline with the card's own furniture around it. Taken verbatim from the
+ * live listing.
+ */
+describe("parseHtmlList — card furniture", () => {
+  const HTML_CARDS = `
+    <a href="/opp/culture-helps-solidarity">Нове # 1565 Грант до €30 000 на проєкти міжнародної співпраці у сфері культури 10.11.2026</a>
+    <a href="/opp/trajectory-3">Оновлено # 1513 Грант до 1 млн грн на розвиток власної справи для ветеранського бізнесу 07.09.2026</a>
+    <a href="/opp/compensation-program">Нове # 1564 Грант до 100% компенсації ЄСВ на створення нових робочих місць Безстроково</a>
+    <a href="/opp/no-badge"># 1550 Безкоштовна участь у навчальній програмі розвитку бізнесу</a>
+    <a href="/opp/x">Нове # 1500 2026</a>
+    <a href="/contacts">Контакти сайту грант маркет</a>`;
+
+  const NOISE = [
+    /^(?:нове|оновлено)?\s*#\s*\d+\s*/iu,
+    /\s*(?:\d{2}\.\d{2}\.\d{4}|безстроково)$/iu,
+  ];
+  const items = parseHtmlList(HTML_CARDS, "https://grant.market/", /\/opp\/[a-z0-9-]+/i, NOISE);
+
+  it("drops the badge and the site's own record number", () => {
+    expect(items[0]?.title).toBe(
+      "Грант до €30 000 на проєкти міжнародної співпраці у сфері культури",
+    );
+    expect(items[1]?.title).toBe(
+      "Грант до 1 млн грн на розвиток власної справи для ветеранського бізнесу",
+    );
+  });
+
+  it("drops the trailing deadline, dated or open-ended", () => {
+    expect(items.map((i) => i.title).join(" ")).not.toMatch(/\d{2}\.\d{2}\.\d{4}|езстроково/);
+    expect(items[2]?.title).toBe(
+      "Грант до 100% компенсації ЄСВ на створення нових робочих місць",
+    );
+  });
+
+  it("drops a card that was nothing but furniture", () => {
+    // Stripping runs before the length test, so «Нове # 1500 2026» leaves
+    // nothing worth storing rather than a title reading «2026».
+    expect(items.map((i) => i.externalId)).not.toContain("/opp/x");
+  });
+
+  // Only the newest and recently edited cards carry a badge word; nine of the
+  // twenty-four on the live listing had none, and requiring it left the record
+  // number standing at the front of the title.
+  it("strips the record number on a card with no badge", () => {
+    const noBadge = items.find((i) => i.externalId === "/opp/no-badge");
+    expect(noBadge?.title).toBe("Безкоштовна участь у навчальній програмі розвитку бізнесу");
+  });
+
+  it("still ignores links outside the pattern", () => {
+    expect(items.every((i) => i.externalId.startsWith("/opp/"))).toBe(true);
+  });
+});
+
 describe("stripRubric", () => {
   it("drops the portal's section label", () => {
     // Both taken from the live ГУРТ listing.

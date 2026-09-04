@@ -23,18 +23,51 @@ export type MonitorResult = {
   durationMs: number;
 };
 
-/** ГУРТ's article paths. Configured here rather than in the database because it
- *  is parser code, not operator configuration. */
+/** Each listing source's article paths. Configured here rather than in the
+ *  database because it is parser code, not operator configuration. */
 const LINK_PATTERNS: Record<string, RegExp> = {
   "gurt.org.ua": /\/news\/grants\/\d+\//,
+  "grant.market": /\/opp\/[a-z0-9-]+/i,
 };
 
-function linkPatternFor(source: Source): RegExp | undefined {
+/**
+ * Card furniture to strip from a listing's anchor text, per source.
+ *
+ * grant.market wraps the whole card in the link, so the anchor reads «Нове #
+ * 1565 Грант до €30 000 … 10.11.2026»: a state badge, the site's own record
+ * number, and the deadline. All three would otherwise become part of the title
+ * shown in the feed and handed to the classifier. The deadline is not lost by
+ * dropping it here — extraction reads it from the call's own page, where it is
+ * a field rather than a fragment of link text.
+ *
+ * The badge is optional and the number is not. Only the newest and the recently
+ * edited cards carry «Нове» or «Оновлено»; on the live listing nine of
+ * twenty-four had none, and requiring the word left «# 1550 Безкоштовна
+ * участь…» standing as the title.
+ */
+const TITLE_NOISE: Record<string, RegExp[]> = {
+  "grant.market": [
+    /^(?:нове|оновлено)?\s*#\s*\d+\s*/iu,
+    /\s*(?:\d{2}\.\d{2}\.\d{4}|безстроково)$/iu,
+  ],
+};
+
+function hostOf(source: Source): string | null {
   try {
-    return LINK_PATTERNS[new URL(source.homepageUrl).host.replace(/^www\./, "")];
+    return new URL(source.homepageUrl).host.replace(/^www\./, "");
   } catch {
-    return undefined;
+    return null;
   }
+}
+
+function linkPatternFor(source: Source): RegExp | undefined {
+  const host = hostOf(source);
+  return host === null ? undefined : LINK_PATTERNS[host];
+}
+
+function titleNoiseFor(source: Source): RegExp[] {
+  const host = hostOf(source);
+  return host === null ? [] : (TITLE_NOISE[host] ?? []);
 }
 
 /**
@@ -81,6 +114,7 @@ export async function monitorSource(sourceId: string): Promise<MonitorResult> {
       userAgent: source.userAgent ?? DEFAULT_USER_AGENT,
       rateLimitPerMin: source.rateLimitPerMin,
       linkPattern: linkPatternFor(source),
+      titleNoise: titleNoiseFor(source),
     });
   } catch (err) {
     return fail(err instanceof DiscoveryFailed ? err.message : String(err));
