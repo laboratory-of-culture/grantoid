@@ -7,6 +7,7 @@ import {
 } from "../../../packages/schemas/fact-registry";
 import { LEGAL_FORM_LABEL_UK, type LegalForm } from "../../../packages/schemas/organization";
 import { formatOblast } from "../../../packages/schemas/place";
+import { formatIsoDateUk } from "../../../packages/schemas/locale-uk";
 import { pendingCandidates } from "../../../packages/db/confirmation";
 import { prisma } from "../../../packages/db/tenancy";
 import { currentDb } from "../../lib/session";
@@ -202,6 +203,12 @@ export default async function ProfilePage() {
   );
 }
 
+/** Stored values are ISO / raw; the row shows them the way the rest of the UI does. */
+function formatFactValue(kind: FactDefinition["kind"], valueText: string | null | undefined): string {
+  if (!valueText) return "—";
+  return kind === "DATE" ? formatIsoDateUk(valueText) : valueText;
+}
+
 function FactLine({
   definition,
   fact,
@@ -218,7 +225,7 @@ function FactLine({
       <div className="fact-label">{definition.labelUk}</div>
 
       <div className={unknown ? "fact-question" : "fact-value"}>
-        {unknown ? definition.questionUk : (fact?.valueText ?? "—")}
+        {unknown ? definition.questionUk : formatFactValue(definition.kind, fact?.valueText)}
       </div>
 
       {/* One line, not a column. Stacked, the tag and the action made each fact

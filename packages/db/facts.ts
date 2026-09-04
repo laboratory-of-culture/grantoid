@@ -20,6 +20,7 @@
 import { Prisma } from "@prisma/client";
 
 import { FACT_KEYS, factDefinition, type FactValueKind } from "../schemas/fact-registry";
+import { normalizeDateUk } from "../schemas/locale-uk";
 import { recomputeCompleteness } from "./confirmation";
 import { prisma, type ScopedClient } from "./tenancy";
 
@@ -54,13 +55,17 @@ function parseValue(
     }
 
     case "DATE": {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+      if (text.length === 0) {
         throw new AnswerRejected("Виберіть дату.");
       }
-      if (Number.isNaN(Date.parse(text))) {
-        throw new AnswerRejected("Такої дати не існує.");
+      // `<input type=date>` sends ISO already; the confirm queue's correction
+      // field and a pasted value do not. `normalizeDateUk` accepts the forms a
+      // Ukrainian statute actually uses and rejects anything ambiguous.
+      const iso = normalizeDateUk(text);
+      if (iso === null) {
+        throw new AnswerRejected("Не вдалося розпізнати дату. Введіть її як РРРР-ММ-ДД.");
       }
-      return { valueText: text };
+      return { valueText: iso };
     }
 
     case "BOOLEAN": {

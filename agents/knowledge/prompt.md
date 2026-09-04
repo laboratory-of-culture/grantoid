@@ -53,3 +53,8 @@ If the text is garbled, empty, or too short to read anything from, set
 layer is unreadable, not empty of facts.
 
 Write `valueText` and `documentSummary` in Ukrainian.
+
+A date value — a registration date, for instance — goes in `valueText` as
+`YYYY-MM-DD`, even when the document writes it «15 березня 2019 року». The
+`quote` still carries the sentence verbatim. A date with no year stated is not a
+date: do not extract that fact.

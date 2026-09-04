@@ -9,11 +9,14 @@ import {
   rejectCandidateAction,
   type ActionResult,
 } from "./actions";
+import type { FactValueKind } from "../../../packages/schemas/fact-registry";
+import { formatIsoDateUk, normalizeDateUk } from "../../../packages/schemas/locale-uk";
 
 export type QueueItem = {
   id: string;
   key: string;
   labelUk: string;
+  kind: FactValueKind;
   state: string;
   valueText: string;
   quote: string;
@@ -90,6 +93,15 @@ function QueueRow({
 }) {
   const [editing, setEditing] = useState(false);
 
+  const isDate = item.kind === "DATE";
+  // The agent lifts a date verbatim from a statute — «15 березня 2019 року».
+  // Show it the way the rest of the UI shows dates, and give the correction
+  // field a real date picker seeded with the parsed value.
+  const displayValue = isDate ? formatIsoDateUk(item.valueText) : item.valueText;
+  const dateDefault = isDate ? (normalizeDateUk(item.valueText) ?? "") : item.valueText;
+  const currentDisplay =
+    item.currentValue && isDate ? formatIsoDateUk(item.currentValue) : item.currentValue;
+
   return (
     <article className="card">
       <span className="card-kicker kicker">{item.labelUk}</span>
@@ -108,17 +120,18 @@ function QueueRow({
                 <input
                   className="input"
                   name="value"
-                  defaultValue={item.valueText}
+                  type={isDate ? "date" : "text"}
+                  defaultValue={dateDefault}
                   autoFocus
                 />
               </label>
             ) : (
-              <p className="card-title">{item.valueText}</p>
+              <p className="card-title">{displayValue}</p>
             )}
 
             {item.currentValue ? (
               <p className="field-hint">
-                Зараз у профілі: {item.currentValue}. Підтвердження замінить це
+                Зараз у профілі: {currentDisplay}. Підтвердження замінить це
                 значення.
               </p>
             ) : null}

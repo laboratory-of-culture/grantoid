@@ -59,6 +59,88 @@ export function formatDateUk(date: Date): string {
   return DATE.format(date);
 }
 
+/**
+ * The genitive month names Ukrainian dates use: «15 березня 2019».
+ *
+ * Duplicated from the extraction agent's copy on purpose — that one is reverse
+ * geocoding a model's free text against an announcement and is covered by the
+ * eval, this one parses what a person or the knowledge agent put in a profile
+ * field. Coupling them would make one set of tests gate the other.
+ */
+const MONTHS_UK_GENITIVE = [
+  "січня", "лютого", "березня", "квітня", "травня", "червня",
+  "липня", "серпня", "вересня", "жовтня", "листопада", "грудня",
+];
+
+/**
+ * Coerce a date a person or the knowledge agent wrote into `YYYY-MM-DD`.
+ *
+ * A registration date reaches storage three ways: typed into `<input type=date>`
+ * (already ISO), corrected by hand in the confirm queue (a free-text field), or
+ * lifted verbatim from a statute by the knowledge agent — and a statute writes
+ * «зареєстровано 15 березня 2019 року» or «"15" березня 2019 р.», never ISO.
+ * Stored as-is, that string then renders as an empty date picker the next time
+ * someone opens the field to edit it, because the control only speaks ISO.
+ *
+ * Returns null when there is no unambiguous date to be had (no year, a month
+ * name it does not recognise) rather than guessing — the caller rejects the
+ * value and asks for `YYYY-MM-DD`.
+ */
+export function normalizeDateUk(raw: string | null | undefined): string | null {
+  const text = raw?.trim().toLowerCase().replace(/[«»"'']/g, "").replace(/\s+/g, " ");
+  if (!text) return null;
+
+  const iso = /(\d{4})-(\d{2})-(\d{2})/.exec(text);
+  if (iso) {
+    const d = new Date(`${iso[1]}-${iso[2]}-${iso[3]}T00:00:00Z`);
+    return Number.isNaN(d.getTime()) ? null : `${iso[1]}-${iso[2]}-${iso[3]}`;
+  }
+
+  const numeric = /(\d{1,2})[./](\d{1,2})[./](\d{4})/.exec(text);
+  if (numeric) {
+    const [, d, m, y] = numeric as unknown as [string, string, string, string];
+    return isoIfReal(y, m, d);
+  }
+
+  const named = new RegExp(`(\\d{1,2})\\s+(${MONTHS_UK_GENITIVE.join("|")})\\s+(\\d{4})`).exec(text);
+  if (named) {
+    const [, d, month, y] = named as unknown as [string, string, string, string];
+    return isoIfReal(y, String(MONTHS_UK_GENITIVE.indexOf(month) + 1), d);
+  }
+
+  return null;
+}
+
+function isoIfReal(year: string, month: string, day: string): string | null {
+  const m = month.padStart(2, "0");
+  const d = day.padStart(2, "0");
+  const iso = `${year}-${m}-${d}`;
+  const parsed = new Date(`${iso}T00:00:00Z`);
+  // Rejects 2019-02-30 and friends: Date rolls them over, so a mismatch on any
+  // component means the calendar date does not exist.
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.getUTCFullYear() !== Number(year) ||
+    parsed.getUTCMonth() + 1 !== Number(m) ||
+    parsed.getUTCDate() !== Number(d)
+  ) {
+    return null;
+  }
+  return iso;
+}
+
+/**
+ * A stored `YYYY-MM-DD` fact value, shown the way the rest of the UI shows dates.
+ *
+ * Falls back to the raw string if it is somehow not ISO — a value that predates
+ * normalisation should still be legible, not blanked.
+ */
+export function formatIsoDateUk(value: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!m) return value;
+  return formatDateUk(new Date(`${m[1]}-${m[2]}-${m[3]}T00:00:00Z`));
+}
+
 /** The nouns this product counts. Named once so two screens cannot disagree. */
 export const NOUN_UK = {
   criterion: { one: "умова", few: "умови", many: "умов" },

@@ -8,7 +8,8 @@
 
 import type { Prisma } from "@prisma/client";
 
-import { FACT_KEYS, factDefinition } from "../schemas/fact-registry";
+import { FACT_KEYS, factDefinition, type FactValueKind } from "../schemas/fact-registry";
+import { normalizeDateUk } from "../schemas/locale-uk";
 import { prisma, type ScopedClient } from "./tenancy";
 
 export class ConfirmationFailed extends Error {}
@@ -17,6 +18,8 @@ export type PendingCandidate = {
   id: string;
   key: string;
   labelUk: string;
+  /** Drives the correction control — a date gets a date picker, not a text box. */
+  kind: FactValueKind;
   state: string;
   valueText: string;
   quote: string;
@@ -58,6 +61,7 @@ export async function pendingCandidates(db: ScopedClient): Promise<PendingCandid
       id: c.id,
       key: c.key,
       labelUk: factDefinition(c.key)?.labelUk ?? c.key,
+      kind: factDefinition(c.key)?.kind ?? "TEXT",
       state: c.state,
       valueText: c.valueText,
       quote: c.quote,
@@ -97,9 +101,28 @@ export async function acceptCandidate(
     throw new ConfirmationFailed(`Поле «${candidate.key}» більше не існує в реєстрі.`);
   }
 
-  const value = (correctedValue ?? candidate.valueText).trim();
+  let value = (correctedValue ?? candidate.valueText).trim();
   if (value.length === 0) {
     throw new ConfirmationFailed("Значення не може бути порожнім.");
+  }
+
+  // Whether the reviewer changed the value, decided before normalisation folds a
+  // date into ISO. Coercing «15 березня 2019 року» to `2019-03-15` is not the
+  // reviewer correcting a fact and must not be logged as `fact.corrected`.
+  const reviewerEdited = value !== candidate.valueText.trim();
+
+  // A statute writes «зареєстровано 15 березня 2019 року», and the knowledge
+  // agent lifts that verbatim. Stored as-is it renders as a blank date picker
+  // the next time the field is edited, because the control only reads ISO. The
+  // eligibility agent is happier with an unambiguous `2019-03-15` too.
+  if (factDefinition(candidate.key)?.kind === "DATE") {
+    const iso = normalizeDateUk(value);
+    if (iso === null) {
+      throw new ConfirmationFailed(
+        "Не вдалося розпізнати дату. Виправте значення у форматі РРРР-ММ-ДД перед підтвердженням.",
+      );
+    }
+    value = iso;
   }
 
   const existing = await db.organizationFact.findFirst({
@@ -157,6 +180,7 @@ export async function acceptCandidate(
         resolvedAt: now,
         resolvedBy: userId,
         acceptedValue: value === candidate.valueText ? null : value,
+        // ^ still records the stored form when it differs, normalisation included
       },
     });
 
@@ -165,7 +189,7 @@ export async function acceptCandidate(
         organizationId: candidate.organizationId,
         actorType: "USER",
         actorId: userId,
-        action: value === candidate.valueText ? "fact.confirmed" : "fact.corrected",
+        action: reviewerEdited ? "fact.corrected" : "fact.confirmed",
         subjectType: "OrganizationFact",
         subjectId: fact.id,
         fromState: existing?.state ?? "UNKNOWN",
