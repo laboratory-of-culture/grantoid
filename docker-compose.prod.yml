@@ -68,6 +68,9 @@ services:
       GRANT_AI_NUM_CTX: ${GRANT_AI_NUM_CTX:-16384}
       GRANT_AI_SEED: ${GRANT_AI_SEED:-7}
       APP_BASE_URL: ${APP_BASE_URL:?set APP_BASE_URL}
+      # Preferred over SMTP when set: authenticates by key, not by the sending
+      # IP, so a dynamic address does not lose mail to a «525 Unauthorized IP».
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
