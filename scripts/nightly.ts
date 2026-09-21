@@ -21,6 +21,7 @@
 
 import { ensureFactRows } from "../packages/db/facts";
 import { classifyPending } from "../packages/ingestion/classify";
+import { closeExpiredGrants } from "../packages/ingestion/expiry";
 import { extractPending } from "../packages/ingestion/extract";
 import { monitorDue } from "../packages/ingestion/monitor";
 import { checkRuntime } from "../packages/llm/ollama";
@@ -74,6 +75,13 @@ async function main(): Promise<void> {
     `  оглянуто ${extracted.examined}, створено ${extracted.extracted}, ` +
       `відхилено ${extracted.rejected}, помилок ${extracted.failed}  ${seconds(extracted.durationMs)}`,
   );
+
+  // Before matching, not after: an expired call closed here is one the match
+  // pass then skips as CLOSED rather than re-filtering by its deadline for every
+  // organisation.
+  console.log("\n— закриття прострочених");
+  const closed = await closeExpiredGrants();
+  console.log(`  закрито ${closed}`);
 
   console.log("\n— стрічки організацій");
   const organizations = await prisma.organization.findMany({
