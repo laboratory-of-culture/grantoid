@@ -9,6 +9,7 @@ import { LEGAL_FORM_LABEL_UK, type LegalForm } from "../../../packages/schemas/o
 import { formatOblast } from "../../../packages/schemas/place";
 import { formatIsoDateUk } from "../../../packages/schemas/locale-uk";
 import { pendingCandidates } from "../../../packages/db/confirmation";
+import { factImpact } from "../../../packages/db/impact";
 import { prisma } from "../../../packages/db/tenancy";
 import { currentDb } from "../../lib/session";
 import { Documents } from "./documents";
@@ -77,7 +78,7 @@ export default async function ProfilePage() {
     );
   }
 
-  const [org, facts, documents, queue, account] = await Promise.all([
+  const [org, facts, documents, queue, account, impact] = await Promise.all([
     ctx.db.organization.findUnique({ where: { id: ctx.organizationId } }),
     ctx.db.organizationFact.findMany(),
     // Donor guidelines belong to a call, not to the organization, and would
@@ -88,6 +89,7 @@ export default async function ProfilePage() {
       where: { id: ctx.user.userId },
       select: { digestOptIn: true },
     }),
+    factImpact(),
   ]);
   const digestOptIn = account?.digestOptIn ?? false;
 
@@ -102,6 +104,14 @@ export default async function ProfilePage() {
   ).length;
   const total = FACT_REGISTRY.length;
   const unanswered = total - answered;
+
+  // The headline the banner turns the chore into a reason for: the most calls
+  // any one unanswered fact would unlock. A single fact, answerable in one step,
+  // so the number never overstates — unlike summing across facts, where one
+  // grant gated by two blanks would be counted twice.
+  const isUnanswered = (key: string) => (byKey.get(key)?.state ?? "UNKNOWN") === "UNKNOWN";
+  const impactOf = (key: string) => (isUnanswered(key) ? (impact[key] ?? 0) : 0);
+  const topUnlock = FACT_REGISTRY.reduce((max, d) => Math.max(max, impactOf(d.key)), 0);
 
   return (
     <div className="stack">
@@ -153,6 +163,12 @@ export default async function ProfilePage() {
             «невідомими» — такий грант усе одно потрапляє до стрічки, але з
             питанням, на яке варто відповісти.
           </p>
+          {topUnlock > 0 ? (
+            <p className="callout">
+              Заповніть позначені поля — і найближче з них відкриє оцінку ще для{" "}
+              <strong>{topUnlock}</strong> {pluralGrants(topUnlock)} у доборі.
+            </p>
+          ) : null}
         </div>
       </section>
 
@@ -191,6 +207,7 @@ export default async function ProfilePage() {
                   key={definition.key}
                   definition={definition}
                   fact={byKey.get(definition.key)}
+                  unlocks={impactOf(definition.key)}
                 />
               ))}
             </div>
@@ -212,9 +229,12 @@ function formatFactValue(kind: FactDefinition["kind"], valueText: string | null 
 function FactLine({
   definition,
   fact,
+  unlocks,
 }: {
   definition: FactDefinition;
   fact: FactRow | undefined;
+  /** Open grants this fact would let us judge, if it is still unanswered. */
+  unlocks: number;
 }) {
   const state = fact?.state ?? "UNKNOWN";
   const tag = stateTag(state);
@@ -222,7 +242,14 @@ function FactLine({
 
   return (
     <div className="fact">
-      <div className="fact-label">{definition.labelUk}</div>
+      <div className="fact-label">
+        {definition.labelUk}
+        {unknown && unlocks > 0 ? (
+          <span className="fact-unlock" title={`Відповідь відкриє оцінку для ${unlocks} ${pluralGrants(unlocks)}`}>
+            +{unlocks} {pluralGrants(unlocks)}
+          </span>
+        ) : null}
+      </div>
 
       <div className={unknown ? "fact-question" : "fact-value"}>
         {unknown ? definition.questionUk : formatFactValue(definition.kind, fact?.valueText)}
@@ -259,5 +286,17 @@ function pluralQuestions(n: number): string {
       return "питання";
     default:
       return "питань";
+  }
+}
+
+function pluralGrants(n: number): string {
+  const rules = new Intl.PluralRules("uk");
+  switch (rules.select(n)) {
+    case "one":
+      return "конкурс";
+    case "few":
+      return "конкурси";
+    default:
+      return "конкурсів";
   }
 }
