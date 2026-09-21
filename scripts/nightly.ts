@@ -22,6 +22,7 @@
 import { ensureFactRows } from "../packages/db/facts";
 import { classifyPending } from "../packages/ingestion/classify";
 import { closeExpiredGrants } from "../packages/ingestion/expiry";
+import { coreFactStatus } from "../packages/schemas/fact-registry";
 import { extractPending } from "../packages/ingestion/extract";
 import { monitorDue } from "../packages/ingestion/monitor";
 import { checkRuntime } from "../packages/llm/ollama";
@@ -85,10 +86,20 @@ async function main(): Promise<void> {
 
   console.log("\n— стрічки організацій");
   const organizations = await prisma.organization.findMany({
-    select: { id: true, name: true },
+    select: { id: true, name: true, facts: { where: { state: { not: "UNKNOWN" } }, select: { key: true } } },
     orderBy: { name: "asc" },
   });
+  let skippedThin = 0;
   for (const org of organizations) {
+    // The completeness gate. An organisation below the core-fact threshold
+    // cannot be ruled in or out of anything — it only produces UNCERTAIN, at
+    // ~3 minutes of model time each, and it gets a fill-your-profile nudge from
+    // the digest rather than a feed. Assessing it is spending the one GPU on a
+    // verdict nobody can act on, so skip it until it answers enough to match.
+    if (!coreFactStatus(org.facts.map((f) => f.key)).ready) {
+      skippedThin += 1;
+      continue;
+    }
     // Isolated per organisation on purpose. Matching reads the shared grant
     // pool, so one malformed grant used to throw inside `matchOrganization` and
     // — with no guard here — abort the whole loop, leaving every organisation
@@ -104,6 +115,9 @@ async function main(): Promise<void> {
     } catch (err) {
       console.log(`  ${org.name}\n    ПОМИЛКА: ${String(err).replace(/\s+/g, " ").slice(0, 200)}`);
     }
+  }
+  if (skippedThin > 0) {
+    console.log(`  (пропущено ${skippedThin} — профіль неповний, отримають заохочення)`);
   }
 
   console.log(`\nразом ${seconds(Date.now() - started)}`);
