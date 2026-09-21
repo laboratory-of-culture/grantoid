@@ -46,7 +46,23 @@ export const ExtractedGrantShape = z.object({
   applicationUrl: z
     .string()
     .nullable()
-    .describe("A link to the donor's own page or application form, if given."),
+    // Kept only when it is a real http(s) link. The private-grant path extracts
+    // from a donor's PDF, and the model there returns the file name as a
+    // `file://…pdf` URL — invalid, and the canonical Grant schema's `.url()`
+    // rejects it, so one such value is a grant that throws when the matcher
+    // parses it (the same failure the currency field had). Coerced to null here
+    // rather than stored, at the boundary both ingest paths pass through.
+    .transform((u) => {
+      const t = u?.trim();
+      if (!t) return null;
+      try {
+        const url = new URL(t);
+        return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : null;
+      } catch {
+        return null;
+      }
+    })
+    .describe("A link to the donor's own page or application form, if given. http(s) only."),
 
   deadline: z
     .string()

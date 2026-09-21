@@ -70,6 +70,7 @@ describe("ExtractedGrant currency normalization", () => {
     titleUk: "Тест",
     summaryUk: "Опис конкурсу достатньої довжини для схеми.",
     donorName: "Донор",
+    currency: null,
     applicationUrl: null,
     deadline: null,
     fundingMin: null,
@@ -89,6 +90,17 @@ describe("ExtractedGrant currency normalization", () => {
     expect(parseCurrency("UAH")).toBe("UAH");
     expect(parseCurrency("eur")).toBe("EUR");
     expect(parseCurrency(" usd ")).toBe("USD");
+  });
+
+  it("keeps a valid http(s) application URL and nulls the rest", () => {
+    const parseUrl = (u: unknown) => ExtractedGrant.parse({ ...base, applicationUrl: u }).applicationUrl;
+    expect(parseUrl("https://donor.org/apply")).toBe("https://donor.org/apply");
+    expect(parseUrl("http://donor.org")).toBe("http://donor.org/");
+    // The exact value that would crash the matcher — a PDF file name.
+    expect(parseUrl("file://Call for Proposals_Emergency grants 2.pdf")).toBeNull();
+    expect(parseUrl("not a url")).toBeNull();
+    expect(parseUrl("")).toBeNull();
+    expect(parseUrl(null)).toBeNull();
   });
 
   it("nulls the word «null» and other junk the model emits", () => {
