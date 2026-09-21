@@ -8,6 +8,7 @@
 import { describe, expect, it } from "vitest";
 
 import { extractionConfidence, missingFields, normalizeDate, quoteOccursIn } from "./index";
+import { ExtractedGrant } from "./output";
 
 describe("normalizeDate — the forms Ukrainian announcements use", () => {
   it("reads ISO, numeric and named months", () => {
@@ -62,3 +63,41 @@ describe("extractionConfidence", () => {
     expect(missingFields(thin)).toContain("розмір гранту не вказано");
   });
 });
+
+describe("ExtractedGrant currency normalization", () => {
+  const base = {
+    isGrant: true,
+    titleUk: "Тест",
+    summaryUk: "Опис конкурсу достатньої довжини для схеми.",
+    donorName: "Донор",
+    applicationUrl: null,
+    deadline: null,
+    fundingMin: null,
+    fundingMax: null,
+    cofinancingRequired: null,
+    sectors: [],
+    targetGroups: [],
+    applicantTypes: [],
+    applicantGeography: [],
+    eligibility: [],
+    notReadFromSource: [],
+  };
+  const parseCurrency = (c: unknown) =>
+    ExtractedGrant.parse({ ...base, currency: c }).currency;
+
+  it("keeps a valid three-letter code, upper-cased", () => {
+    expect(parseCurrency("UAH")).toBe("UAH");
+    expect(parseCurrency("eur")).toBe("EUR");
+    expect(parseCurrency(" usd ")).toBe("USD");
+  });
+
+  it("nulls the word «null» and other junk the model emits", () => {
+    // The exact value that crashed the nightly matching pass.
+    expect(parseCurrency("null")).toBeNull();
+    expect(parseCurrency("грн")).toBeNull();
+    expect(parseCurrency("$")).toBeNull();
+    expect(parseCurrency("euro")).toBeNull();
+    expect(parseCurrency("")).toBeNull();
+    expect(parseCurrency(null)).toBeNull();
+  });
+})

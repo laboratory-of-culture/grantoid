@@ -81,12 +81,21 @@ async function main(): Promise<void> {
     orderBy: { name: "asc" },
   });
   for (const org of organizations) {
-    const outcome = await matchOrganization(org.id, { limit: 200 });
-    console.log(
-      `  ${org.name}\n    кандидатів ${outcome.candidates}, відсіяно без моделі ${outcome.filtered}, ` +
-        `повторно ${outcome.reused}, оцінено ${outcome.assessed}, помилок ${outcome.failed}, ` +
-        `рекомендовано ${outcome.recommended}  ${seconds(outcome.durationMs)}`,
-    );
+    // Isolated per organisation on purpose. Matching reads the shared grant
+    // pool, so one malformed grant used to throw inside `matchOrganization` and
+    // — with no guard here — abort the whole loop, leaving every organisation
+    // after it in the alphabet unmatched and their digests empty. A failure now
+    // costs the one organisation its run, not everyone else theirs.
+    try {
+      const outcome = await matchOrganization(org.id, { limit: 200 });
+      console.log(
+        `  ${org.name}\n    кандидатів ${outcome.candidates}, відсіяно без моделі ${outcome.filtered}, ` +
+          `повторно ${outcome.reused}, оцінено ${outcome.assessed}, помилок ${outcome.failed}, ` +
+          `рекомендовано ${outcome.recommended}  ${seconds(outcome.durationMs)}`,
+      );
+    } catch (err) {
+      console.log(`  ${org.name}\n    ПОМИЛКА: ${String(err).replace(/\s+/g, " ").slice(0, 200)}`);
+    }
   }
 
   console.log(`\nразом ${seconds(Date.now() - started)}`);

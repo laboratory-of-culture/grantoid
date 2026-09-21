@@ -58,6 +58,18 @@ export const ExtractedGrantShape = z.object({
   currency: z
     .string()
     .nullable()
+    // The model returns the *word* "null" often enough — a qwen3 slip — and the
+    // occasional «грн» or «$», and the canonical Grant schema requires exactly a
+    // three-letter code. One such value stored is one grant that throws when the
+    // matcher parses it, and because grants are shared that one throw took down
+    // the whole nightly matching pass for every organisation after it. Coerced
+    // to a clean ISO-ish code or real null here, at the one boundary both the
+    // crawl and the private-grant path pass through, so nothing invalid is ever
+    // written.
+    .transform((c) => {
+      const up = c?.trim().toUpperCase();
+      return up && /^[A-Z]{3}$/.test(up) ? up : null;
+    })
     .describe("Three-letter code: UAH, EUR, USD."),
   cofinancingRequired: z
     .boolean()
