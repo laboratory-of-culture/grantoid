@@ -18,6 +18,7 @@
  */
 
 import type { FeedEntry } from "../matching/feed";
+import type { FactDefinition } from "../schemas/fact-registry";
 import { NOUN_UK, countUk, formatDateUk } from "../schemas/locale-uk";
 
 export type DigestEntry = {
@@ -161,5 +162,60 @@ export function buildDigest(
     text: lines.join("\n"),
     entries: picked,
     unsubscribeUrl,
+  };
+}
+
+/**
+ * The other letter this system sends: not "here are grants" but "answer these
+ * to get grants".
+ *
+ * It goes to an organisation the matcher cannot use yet — too few core facts to
+ * rule any call in or out (see `coreFactStatus`). Sending it a weekly "нічого
+ * нового" would be honest and useless; sending it the exact questions that
+ * unblock matching turns a dead subscription into a to-do list with a payoff.
+ *
+ * Same envelope guarantees as the digest: one-click unsubscribe, no profile
+ * data or eligibility verdict in the body, only the organisation's own name and
+ * the public registry questions.
+ */
+export type ProfileNudge = {
+  subject: string;
+  text: string;
+  unsubscribeUrl: string;
+  organizationName: string;
+  missing: { labelUk: string; questionUk: string }[];
+};
+
+export function buildProfileNudge(
+  organizationName: string,
+  missing: readonly FactDefinition[],
+  baseUrl: string,
+  unsubscribeToken: string,
+): ProfileNudge {
+  const unsubscribeUrl = `${baseUrl}/vidpyska?t=${unsubscribeToken}`;
+  const lines = [
+    `${organizationName} — щоб почати отримувати гранти, лишилось відповісти на кілька питань.`,
+    "",
+    "Ми не показуємо конкурси наосліп: добір спирається на профіль вашої організації.",
+    "Поки не заповнено кілька ключових фактів, більшість конкурсів лишаються",
+    "«невизначеними» — ми не можемо сказати, підходять вони чи ні.",
+    "",
+    "Дайте відповідь на ці питання, і добір почне працювати саме для вас:",
+    "",
+    ...missing.map((f) => `• ${f.questionUk}`),
+    "",
+    `Заповнити профіль: ${baseUrl}/profil`,
+    "",
+    "Це не оцінка й не витік даних — профіль не залишає нашої інфраструктури.",
+    "Система в режимі дослідної експлуатації.",
+    "",
+    `Відписатися: ${unsubscribeUrl}`,
+  ];
+  return {
+    subject: `${organizationName}: заповніть профіль, щоб отримувати гранти`,
+    text: lines.join("\n"),
+    unsubscribeUrl,
+    organizationName,
+    missing: missing.map((f) => ({ labelUk: f.labelUk, questionUk: f.questionUk })),
   };
 }

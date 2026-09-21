@@ -25,7 +25,7 @@
  * message body.
  */
 
-import type { Digest } from "./digest";
+import type { Digest, ProfileNudge } from "./digest";
 
 /** From packages/ui/tokens.css. Literal here because email has no variables. */
 const INK = "#201e1d";
@@ -179,6 +179,106 @@ export function renderDigestHtml(digest: Digest, organizationName: string): stri
               </p>
               <p style="margin:0;font-family:${SANS};font-size:12px;color:${MUTED};">
                 <a href="${esc(digest.unsubscribeUrl)}" style="color:${MUTED};">Відписатися</a>
+                — без входу в систему.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+/**
+ * The nudge, in the same envelope as the digest.
+ *
+ * Deliberately the same shell — mark, black-bordered card, one CSS-drawn button
+ * — so an organisation that gets a nudge one week and a digest the next reads
+ * them as the same sender, not two products. The body is the list of questions
+ * that unblock matching, and the button goes to the profile rather than the
+ * feed.
+ */
+export function renderNudgeHtml(nudge: ProfileNudge): string {
+  const origin = nudge.unsubscribeUrl.split("/vidpyska")[0] ?? "";
+  const questions = nudge.missing
+    .map(
+      (m) => `
+      <tr>
+        <td style="padding:8px 0;border-top:1px solid ${RULE};font-family:${SANS};
+                   font-size:15px;line-height:1.4;color:${INK};">
+          ${esc(m.questionUk)}
+        </td>
+      </tr>`,
+    )
+    .join("");
+
+  return `<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>${esc(nudge.subject)}</title>
+</head>
+<body style="margin:0;padding:0;background:${GROUND};">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+    ${esc(nudge.missing.map((m) => m.labelUk).join(" · "))}
+  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+         style="background:${GROUND};">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="max-width:560px;background:${SURFACE};border:2px solid ${INK};">
+          <tr>
+            <td style="padding:24px 24px 0;">
+              <div style="font-family:${MONO};font-size:12px;letter-spacing:0.1em;
+                          text-transform:uppercase;color:${MUTED};">
+                грантоЇД.АІ
+              </div>
+              <h1 style="margin:8px 0 4px;font-family:${SANS};font-size:22px;
+                         font-weight:800;line-height:1.2;color:${INK};">
+                Заповніть профіль, щоб отримувати гранти
+              </h1>
+              <div style="font-family:${SANS};font-size:14px;color:${MUTED};">
+                ${esc(nudge.organizationName)}
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 24px 0;">
+              <p style="margin:0 0 12px;font-family:${SANS};font-size:14px;
+                        line-height:1.5;color:${INK};">
+                Добір спирається на профіль вашої організації. Поки не заповнено кілька
+                ключових фактів, більшість конкурсів лишаються «невизначеними» — ми не
+                можемо сказати, підходять вони чи ні. Дайте відповідь на ці питання, і
+                добір почне працювати саме для вас:
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                ${questions}
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 24px 0;">
+              <a href="${esc(origin)}/profil"
+                 style="display:inline-block;padding:12px 18px;border:2px solid ${INK};
+                        font-family:${SANS};font-size:14px;font-weight:700;
+                        color:${INK};text-decoration:none;">
+                Заповнити профіль
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 24px 24px;">
+              <p style="margin:0 0 10px;font-family:${SANS};font-size:12px;
+                        line-height:1.5;color:${MUTED};">
+                Це не оцінка й не витік даних — профіль не залишає нашої інфраструктури.
+              </p>
+              <p style="margin:0;font-family:${SANS};font-size:12px;color:${MUTED};">
+                <a href="${esc(nudge.unsubscribeUrl)}" style="color:${MUTED};">Відписатися</a>
                 — без входу в систему.
               </p>
             </td>

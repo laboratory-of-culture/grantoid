@@ -251,3 +251,49 @@ export const CONCEPT_PREREQUISITES = [
   "target_audiences",
   "geographic_coverage",
 ] as const;
+
+/**
+ * The facts that decide whether matching an organisation is worth the model's
+ * time — the line between "assess" and "motivate".
+ *
+ * Drawn from live data, not a guess. Across every organisation matched during
+ * trial operation, the ones that earned a recommendation all carried four or
+ * five of these; the ones that carried none produced forty to fifty UNCERTAIN
+ * verdicts and not a single recommendation, at ~3 minutes of model time each.
+ * These five are also what the prefilter reads — applicant type, non-profit
+ * status, region, and the two sector fields — so an organisation missing them
+ * cannot be ruled in or out of anything, only left UNCERTAIN.
+ *
+ * The threshold is four of five, not all five: an organisation one fact short
+ * still matched usefully in the data, and demanding a full house would nudge
+ * people who are already answerable. Below four, the honest move is to ask them
+ * to fill the profile rather than burn a night assessing a blank.
+ */
+export const CORE_FACT_KEYS = [
+  "legal_form",
+  "non_profit_status",
+  "registration_oblast",
+  "activity_areas",
+  "sectors",
+] as const;
+
+export const CORE_FACTS_REQUIRED = 4;
+
+/**
+ * Where an organisation sits against that line, and which core facts it still
+ * owes. `missing` is ordered as `CORE_FACT_KEYS` is, so a nudge lists them in a
+ * stable, sensible order rather than however a Set iterates.
+ */
+export function coreFactStatus(answeredKeys: Iterable<string>): {
+  answered: number;
+  missing: FactDefinition[];
+  ready: boolean;
+} {
+  const have = new Set(answeredKeys);
+  const missing = CORE_FACT_KEYS.filter((k) => !have.has(k)).map((k) => BY_KEY.get(k)!);
+  return {
+    answered: CORE_FACT_KEYS.length - missing.length,
+    missing,
+    ready: CORE_FACT_KEYS.length - missing.length >= CORE_FACTS_REQUIRED,
+  };
+}

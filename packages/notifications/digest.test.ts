@@ -9,7 +9,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { FeedEntry } from "../matching/feed";
-import { buildDigest, opportunitiesUk, selectForDigest } from "./digest";
+import { coreFactStatus } from "../schemas/fact-registry";
+import { buildDigest, buildProfileNudge, opportunitiesUk, selectForDigest } from "./digest";
 
 const NOW = new Date("2026-08-20T10:00:00Z");
 
@@ -139,5 +140,36 @@ describe("opportunitiesUk", () => {
     expect(opportunitiesUk(5)).toBe("5 нових можливостей");
     expect(opportunitiesUk(11)).toBe("11 нових можливостей");
     expect(opportunitiesUk(22)).toBe("22 нові можливості");
+  });
+});
+
+describe("coreFactStatus + buildProfileNudge", () => {
+  it("is not ready below four core facts, and lists what is missing", () => {
+    const s = coreFactStatus(["legal_form", "non_profit_status"]);
+    expect(s.ready).toBe(false);
+    expect(s.answered).toBe(2);
+    expect(s.missing.map((f) => f.key)).toEqual([
+      "registration_oblast",
+      "activity_areas",
+      "sectors",
+    ]);
+  });
+
+  it("is ready at four of five core facts", () => {
+    const s = coreFactStatus(["legal_form", "non_profit_status", "registration_oblast", "sectors"]);
+    expect(s.ready).toBe(true);
+    expect(s.missing.map((f) => f.key)).toEqual(["activity_areas"]);
+  });
+
+  it("builds a nudge with the missing questions and a profile link", () => {
+    const s = coreFactStatus(["legal_form"]);
+    const nudge = buildProfileNudge("ГО «Тест»", s.missing, "https://grantoid.in.ua", "tok123");
+    expect(nudge.subject).toContain("ГО «Тест»");
+    expect(nudge.unsubscribeUrl).toBe("https://grantoid.in.ua/vidpyska?t=tok123");
+    expect(nudge.text).toContain("https://grantoid.in.ua/profil");
+    // Every missing core fact's question appears in the body.
+    for (const m of s.missing) expect(nudge.text).toContain(m.questionUk);
+    // No eligibility verdict or profile value leaks in.
+    expect(nudge.text).not.toMatch(/eligib|прийнятн|MATCH|UNCERTAIN/i);
   });
 });

@@ -149,27 +149,45 @@ export class BrevoApiTransport implements MailTransport {
 
   async send(message: Message): Promise<void> {
     const sender = parseFrom(this.from);
-    const response = await fetch(BREVO_API_URL, {
-      method: "POST",
-      headers: {
-        "api-key": this.apiKey,
-        "content-type": "application/json",
-        accept: "application/json",
-      },
-      body: JSON.stringify({
-        sender,
-        to: [{ email: message.to }],
-        subject: message.subject,
-        textContent: message.text,
-        ...(message.html ? { htmlContent: message.html } : {}),
-        // The same one-click unsubscribe the SMTP path sends, so a client shows
-        // its native button and the header and body links agree.
+    // A hard timeout: `fetch` has none, and the digest sends sequentially, so
+    // one request that hangs stops every remaining mailbox for the whole run —
+    // the nightly digest and the catch-up both loop through this. 15 seconds is
+    // far longer than a transactional send needs and short enough that a stall
+    // becomes one failed mailbox, retried next run, rather than a wedged job.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15_000);
+    let response: Response;
+    try {
+      response = await fetch(BREVO_API_URL, {
+        method: "POST",
         headers: {
-          "List-Unsubscribe": `<${message.unsubscribeUrl}>`,
-          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          "api-key": this.apiKey,
+          "content-type": "application/json",
+          accept: "application/json",
         },
-      }),
-    });
+        body: JSON.stringify({
+          sender,
+          to: [{ email: message.to }],
+          subject: message.subject,
+          textContent: message.text,
+          ...(message.html ? { htmlContent: message.html } : {}),
+          // The same one-click unsubscribe the SMTP path sends, so a client shows
+          // its native button and the header and body links agree.
+          headers: {
+            "List-Unsubscribe": `<${message.unsubscribeUrl}>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          },
+        }),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        throw new Error("brevo api: no response within 15s");
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
 
     if (!response.ok) {
       // Surface Brevo's own message so a failure is diagnosable in the digest

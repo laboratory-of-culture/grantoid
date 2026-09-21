@@ -17,6 +17,7 @@ async function main(): Promise<void> {
   console.log(`transport    ${outcome.transport}`);
   console.log(`considered   ${outcome.considered}`);
   console.log(`sent         ${outcome.sent}`);
+  console.log(`nudged       ${outcome.nudged}   (profile too thin — sent a fill-in reminder)`);
   console.log(`skipped      ${outcome.skippedEmpty}   (nothing new worth an email)`);
   console.log(`failed       ${outcome.failed}`);
 

@@ -10,8 +10,9 @@ import { randomBytes } from "node:crypto";
 
 import { loadFeed } from "../matching/feed";
 import { prisma } from "../db/tenancy";
-import { buildDigest, selectForDigest } from "./digest";
-import { renderDigestHtml } from "./html";
+import { coreFactStatus } from "../schemas/fact-registry";
+import { buildDigest, buildProfileNudge, selectForDigest } from "./digest";
+import { renderDigestHtml, renderNudgeHtml } from "./html";
 import { mailTransport, type MailTransport } from "./mail";
 
 export const DIGEST_INTERVAL_DAYS = 7;
@@ -19,7 +20,9 @@ export const DIGEST_INTERVAL_DAYS = 7;
 export type DigestOutcome = {
   considered: number;
   sent: number;
-  /** Subscribed, but had nothing new worth an email. */
+  /** Sent a "fill your profile" nudge instead of a digest — too few core facts. */
+  nudged: number;
+  /** Subscribed, profile is fine, but had nothing new worth an email. */
   skippedEmpty: number;
   failed: number;
   transport: string;
@@ -141,6 +144,7 @@ export async function sendDueDigests(
   const outcome: DigestOutcome = {
     considered: users.length,
     sent: 0,
+    nudged: 0,
     skippedEmpty: 0,
     failed: 0,
     transport: transport.name,
@@ -155,10 +159,34 @@ export async function sendDueDigests(
       const feed = await loadFeed(membership.organizationId, { recommendedOnly: true });
       const picked = selectForDigest(feed.entries, user.lastDigestAt, now);
 
-      // Nothing new is not a reason to write. A weekly "нічого не знайшлося"
-      // trains people to stop opening the ones that do carry something.
       if (picked.length === 0) {
-        outcome.skippedEmpty += 1;
+        // Nothing new to recommend. Two reasons, two different letters. If the
+        // profile is too thin for the matcher to rule anything in or out, the
+        // useful thing is the questions that unblock it — a nudge. If the
+        // profile is fine and there is simply nothing new this week, silence:
+        // a weekly "нічого не знайшлося" to a complete profile trains people to
+        // stop opening the ones that do carry something.
+        const answered = await prisma.organizationFact.findMany({
+          where: { organizationId: membership.organizationId, state: { not: "UNKNOWN" } },
+          select: { key: true },
+        });
+        const core = coreFactStatus(answered.map((f) => f.key));
+        if (core.ready || core.missing.length === 0) {
+          outcome.skippedEmpty += 1;
+          continue;
+        }
+
+        const token = await ensureUnsubscribeToken(user.id);
+        const nudge = buildProfileNudge(membership.organization.name, core.missing, origin, token);
+        await transport.send({
+          to: user.email,
+          subject: nudge.subject,
+          text: nudge.text,
+          html: renderNudgeHtml(nudge),
+          unsubscribeUrl: nudge.unsubscribeUrl,
+        });
+        await prisma.user.update({ where: { id: user.id }, data: { lastDigestAt: now } });
+        outcome.nudged += 1;
         continue;
       }
 
