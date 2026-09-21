@@ -24,7 +24,8 @@
     "nightly": "tsx scripts/nightly.ts",
     "audit:ui": "node -e \"require('fs').copyFileSync('scripts/audit-ui.mjs','public/_audit.js')\" && echo \"copied to public/_audit.js - in the browser: (await import('/_audit.js')).audit()\"",
     "preflight": "tsx scripts/preflight.ts",
-    "purge:test": "tsx scripts/purge-test-data.ts"
+    "purge:test": "tsx scripts/purge-test-data.ts",
+    "eval:extraction": "tsx evals/run-extraction-eval.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",

@@ -29,6 +29,27 @@ not appear in this list at all.
 
 # Eligibility rules
 
+A rule is a requirement **of the applicant** — something that decides whether
+*this organization* may apply. Before you record anything as a rule, ask: does it
+rule an applicant in or out? If it describes something else, it is not a rule and
+must not be extracted. Three things read like requirements and are not:
+
+- **What the project funds, or who it is for.** «Послуги передбачають супервізію
+  для команди з 12 психологів» describes the people the funded service is
+  delivered to — the beneficiary — not a team size the applicant must have. A
+  tender's scope of work, its deliverables, its target beneficiaries: none of
+  these are applicant criteria. Extracting one rejects an eligible organization
+  for not being the client.
+- **How and when to apply.** A submission deadline, a mandatory pre-application
+  webinar, the address to send a form to — these are logistics, not eligibility.
+  The deadline has its own field; anything else decision-relevant goes in
+  `notReadFromSource`.
+- **How proposals are scored.** Evaluation and selection criteria decide who
+  wins, not who may submit.
+
+When in doubt, leave it out: a described activity mistaken for a requirement is a
+false rejection, which is worse than a missing preference.
+
 Record only requirements the announcement states. For each one:
 
 - `text` — the requirement in one sentence, in Ukrainian.

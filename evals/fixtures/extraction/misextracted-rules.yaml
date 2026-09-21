@@ -1,52 +1,46 @@
 # Extraction eval fixtures for the #3 defect: text that is NOT a requirement of
 # the APPLICANT — a description of the funded service, of the client who
 # receives it, or of the submission logistics — must not be extracted as an
-# eligibility rule. When it is, the eligibility engine faithfully applies a
-# rule that should not exist, and a well-filled organisation is told it is
-# ineligible (or a deadline sentence becomes a criterion resolved against a
-# random fact).
+# eligibility rule. When it is, the eligibility engine faithfully applies a rule
+# that should not exist, and a well-filled organisation is told it is ineligible.
 #
-# Mined from live trial data (2026-09). Each case carries the exact quote, what
-# the extractor WRONGLY produced, and what it must produce instead. A harness
-# that runs the extraction agent over the source and asserts these quotes do
-# not become rules is the remaining, model-gated piece — these are its targets.
+# Mined from live trial data (2026-09). Each case wraps the real misextracted
+# quote in a short synthetic announcement that also states one genuine applicant
+# requirement, so the eval checks both directions at once: the fix must drop the
+# `bad` quote and keep the `good` one. `evals/run-extraction-eval.ts` runs the
+# extraction agent over each `article` and asserts exactly that.
 
 cases:
   - id: service-team-size
     grant: "Запит пропозицій — послуги професійної супервізії"
-    quote: "Послуги передбачають проведення регулярних групових супервізій для команди з 12 психологів"
-    wrong:
-      extracted_as_rule: true
-      kind: MANDATORY
-      resolvingFactKey: team_size
-      note: >-
-        The team of 12 is the CLIENT the service is delivered to, not a size the
-        applicant must have. This produced a false NOT_ELIGIBLE for a 16-fact
-        organisation whose own team is smaller.
-    expected:
-      extracted_as_rule: false
-      reason: describes the funded activity's beneficiary, not an applicant criterion
+    # The client the service is delivered to — not a size the applicant needs.
+    bad: "Послуги передбачають проведення регулярних групових супервізій для команди з 12 психологів"
+    good: "Подаватися можуть лише неприбуткові громадські організації."
+    was_mapped_to: team_size
+    article: |
+      Запит пропозицій — послуги професійної супервізії.
+      Послуги передбачають проведення регулярних групових супервізій для команди з 12 психологів.
+      Подаватися можуть лише неприбуткові громадські організації.
+      Кінцевий термін подачі пропозицій – 23.09.2026.
 
   - id: logistics-deadline
     grant: "Запит пропозицій — послуги професійної супервізії"
-    quote: "Кінцевий термін подачі пропозицій – 23.09.2026 15-00 за київським часом"
-    wrong:
-      extracted_as_rule: true
-      kind: MANDATORY
-      resolvingFactKey: legal_form
-      note: A submission deadline became an eligibility rule mapped to legal form.
-    expected:
-      extracted_as_rule: false
-      reason: submission logistics — the deadline is a grant field, not a requirement of the applicant
+    # A submission deadline — logistics, and it already has its own field.
+    bad: "Кінцевий термін подачі пропозицій – 23.09.2026 15-00 за київським часом"
+    good: "Заявник має бути зареєстрований у Львівській області."
+    was_mapped_to: legal_form
+    article: |
+      Грантовий конкурс для громадських організацій.
+      Заявник має бути зареєстрований у Львівській області.
+      Кінцевий термін подачі пропозицій – 23.09.2026 15-00 за київським часом.
 
   - id: logistics-workshop
     grant: "Підтримка надання якісних та доступних послуг"
-    quote: "Воркшоп перед поданням заявки. Проєкт проведе онлайн воркшоп перед подачею заявки"
-    wrong:
-      extracted_as_rule: true
-      kind: PREFERRED
-      resolvingFactKey: geographic_coverage
-      note: An optional pre-application workshop became a preferred eligibility rule.
-    expected:
-      extracted_as_rule: false
-      reason: describes the programme's process, not who may apply
+    # An optional pre-application workshop — the programme's process, not who applies.
+    bad: "Проєкт проведе онлайн воркшоп перед подачею заявки"
+    good: "До участі запрошуються організації, що працюють у сфері культури."
+    was_mapped_to: geographic_coverage
+    article: |
+      Підтримка культурних ініціатив.
+      До участі запрошуються організації, що працюють у сфері культури.
+      Проєкт проведе онлайн воркшоп перед подачею заявки 22 вересня.
