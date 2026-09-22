@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { ArrowRight, CalendarClock, CircleHelp, TriangleAlert } from "lucide-react";
+import { ArrowRight, CalendarClock, Check, CircleHelp, ListChecks, TriangleAlert } from "lucide-react";
 
 import { loadFeed, type FeedEntry } from "../../../packages/matching/feed";
+import { coreFactStatus, type FactDefinition } from "../../../packages/schemas/fact-registry";
 import { NOUN_UK, countUk, formatDateUk } from "../../../packages/schemas/locale-uk";
 import { VERDICT_LABEL_UK } from "../../../packages/schemas/verdict";
 import { AiNotice, Provenance } from "../../components/beta";
@@ -23,7 +24,23 @@ export const dynamic = "force-dynamic";
  * date must never look like urgency.
  */
 export default async function FeedPage() {
-  const { organizationId } = await requireDb();
+  const { db, organizationId } = await requireDb();
+
+  // The gate: a personalised feed needs a profile to personalise against. Below
+  // the core-fact line the matcher can only return UNCERTAIN — it cannot rule a
+  // call in or out — so instead of a page of "невідомо", the organisation gets
+  // the short list of required fields that turn this screen on. This is the same
+  // line the nightly matcher uses, so what you see here and what we spend the
+  // GPU assessing are the same set: fill the fields, and the feed is real.
+  const answered = await db.organizationFact.findMany({
+    where: { state: { not: "UNKNOWN" } },
+    select: { key: true },
+  });
+  const core = coreFactStatus(answered.map((f) => f.key));
+  if (!core.ready) {
+    return <FeedGate missing={core.missing} />;
+  }
+
   const feed = await loadFeed(organizationId);
 
   return (
@@ -50,6 +67,55 @@ export default async function FeedPage() {
           </div>
         </>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * The gate: the required fields that turn the feed on.
+ *
+ * Not a paywall and not a scolding — a short, finishable list. It names the
+ * fields the matcher needs to judge a call for this organisation, as a checklist
+ * with the questions themselves, and nothing hypothetical: no "unlock N grants",
+ * because a real feed after two answered fields is a better promise than a big
+ * number before them.
+ */
+function FeedGate({ missing }: { missing: readonly FactDefinition[] }) {
+  return (
+    <div className="stack">
+      <div className="section-head">
+        <div>
+          <span className="kicker">Можливості</span>
+          <h1 className="h1">Гранти для вашої організації</h1>
+        </div>
+      </div>
+
+      <div className="empty stack">
+        <span className="tag tag-accent">
+          <ListChecks size={13} aria-hidden="true" />
+          Ще кілька полів
+        </span>
+        <h2 className="h3">Заповніть обовʼязкові поля, щоб побачити персональні можливості</h2>
+        <p className="prose">
+          Добір оцінює кожен конкурс порівняно з вашим профілем. Без цих полів більшість умов
+          лишаються «невідомими» — ми не можемо сказати, підходить грант чи ні. Дайте відповідь,
+          і стрічка стане персональною.
+        </p>
+
+        <ul className="checklist">
+          {missing.map((f) => (
+            <li key={f.key}>
+              <Check size={15} aria-hidden="true" />
+              <span>{f.questionUk}</span>
+            </li>
+          ))}
+        </ul>
+
+        <Link href="/profil" className="btn btn-primary">
+          Заповнити профіль
+          <ArrowRight size={15} aria-hidden="true" />
+        </Link>
+      </div>
     </div>
   );
 }
