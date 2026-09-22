@@ -33,8 +33,10 @@ import { FlaskConical } from "lucide-react";
  * The lead word is «Дослідна експлуатація», not «Бета»: real Ukrainian NGOs are
  * using this now, and the phrase says what that means — the system is in service
  * but not yet proven — where a bare «Бета» reads as a feature label a grant
- * manager has learned to ignore. One sentence of what "trial" means for them
- * follows, then the two limitations they can act on.
+ * manager has learned to ignore. It stops at the one thing that is always true
+ * and always actionable: the matching is not validated, so mistakes are
+ * possible. The per-conclusion `AiNotice` carries "check against the source"
+ * where it belongs — on the verdict itself — so the banner need not repeat it.
  */
 export function BetaBanner() {
   return (
@@ -42,9 +44,7 @@ export function BetaBanner() {
       <FlaskConical size={14} aria-hidden="true" className="banner-icon" />
       <p className="banner-body">
         <strong>Дослідна експлуатація.</strong> Система працює з першими організаціями, і
-        добір ще не перевірено на живих даних — можливі похибки. Конкурси зі стрічки
-        прочитано з оголошень, а не з повних умов донора: завантажте умови самі й звіряйте
-        кожен висновок з оригіналом.
+        добір ще не перевірено на живих даних — можливі похибки.
       </p>
     </aside>
   );
