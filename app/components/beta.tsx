@@ -29,15 +29,22 @@ import { FlaskConical } from "lucide-react";
  *
  * A server component: with nothing to dismiss there is no state, and no reason
  * to ship it to the browser.
+ *
+ * The lead word is «Дослідна експлуатація», not «Бета»: real Ukrainian NGOs are
+ * using this now, and the phrase says what that means — the system is in service
+ * but not yet proven — where a bare «Бета» reads as a feature label a grant
+ * manager has learned to ignore. One sentence of what "trial" means for them
+ * follows, then the two limitations they can act on.
  */
 export function BetaBanner() {
   return (
     <aside className="banner" role="note" aria-label="Дослідна експлуатація">
       <FlaskConical size={14} aria-hidden="true" className="banner-icon" />
       <p className="banner-body">
-        <strong>Бета.</strong> Добір і оцінку прийнятності не перевірено на живих даних.
-        Конкурси зі стрічки прочитано з оголошень, а не з умов донора — повні умови
-        завантажте самі. Кожен висновок звіряйте з оригіналом.
+        <strong>Дослідна експлуатація.</strong> Система працює з першими організаціями, і
+        добір ще не перевірено на живих даних — можливі похибки. Конкурси зі стрічки
+        прочитано з оголошень, а не з повних умов донора: завантажте умови самі й звіряйте
+        кожен висновок з оригіналом.
       </p>
     </aside>
   );
