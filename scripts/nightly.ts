@@ -124,8 +124,13 @@ async function main(): Promise<void> {
 }
 
 main()
+  // Explicit exit, or the process lingers for hours after the work is done: the
+  // ollama client keeps a keep-alive socket open, and an open handle is enough
+  // to hold node — and with it a Prisma connection out of a pool of five. A
+  // finished nightly that never exits is a connection the app cannot have.
   .catch((err) => {
     console.error(String(err));
-    process.exit(1);
+    process.exitCode = 1;
   })
-  .finally(() => prisma.$disconnect());
+  .finally(() => prisma.$disconnect())
+  .then(() => process.exit());
