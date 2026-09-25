@@ -124,13 +124,24 @@ async function main(): Promise<void> {
 }
 
 main()
-  // Explicit exit, or the process lingers for hours after the work is done: the
-  // ollama client keeps a keep-alive socket open, and an open handle is enough
-  // to hold node — and with it a Prisma connection out of a pool of five. A
-  // finished nightly that never exits is a connection the app cannot have.
+  // Exit no matter what, and do not let cleanup decide whether it happens. The
+  // ollama client keeps a keep-alive socket open, so an open handle holds node —
+  // and with it a Prisma connection out of a pool of five — for hours after the
+  // work is done. The first version chained `.finally(disconnect).then(exit)`,
+  // and when `$disconnect()` hung the `.then` never ran and the process lingered
+  // anyway. Now a 3s watchdog forces the exit regardless, and a clean disconnect
+  // just makes it happen sooner.
   .catch((err) => {
     console.error(String(err));
     process.exitCode = 1;
   })
-  .finally(() => prisma.$disconnect())
-  .then(() => process.exit());
+  .finally(async () => {
+    setTimeout(() => process.exit(), 3000).unref();
+    try {
+      await prisma.$disconnect();
+    } catch {
+      // A failed disconnect must not keep the process alive; the OS closes the
+      // socket on exit either way.
+    }
+    process.exit();
+  });
